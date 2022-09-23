@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="https://fonts.googleapis.com/css?family=Luckiest+Guy" rel="stylesheet">
+	<script type="text/javascript" src="jquery.min.js"></script>
+	<script type="text/javascript" src="canvasSprite.js"></script>
+	<script type="text/javascript" src="geometry.js"></script>
+	<script type="text/javascript">
+		var context, set, deer, rudolph;
+		var targetY;
+		$(document).ready(function(){
+			var parentNode = $('#gameCanvas').parent();
+			var gifts = [], santa;
+			targetY = parentNode.height() / 3;
+			parentNode.css({
+				'background-color' : '#101830'
+			});
+			context = $('#gameCanvas').attr({'width': parentNode.width() + 'px', 'height': parentNode.height() + 'px'})[0].getContext('2d');
+			set = new spriteSet({
+				"image" : "SantaAndReindeer.png",
+				"frameWidth" : 60,
+				"frameHeight" : 48,
+				"centerx" : 30,
+				"centery" : 24,
+				"frames" : {
+					"deer1" : { "x" : 0, "y" : 0 },
+					"deer2" : { "x" : 1, "y" : 0 },
+					"deer3" : { "x" : 2, "y" : 0 },
+					"deer4" : { "x" : 3, "y" : 0 },
+					"deer5" : { "x" : 0, "y" : 1 },
+					"deer6" : { "x" : 1, "y" : 1 },
+					"deer7" : { "x" : 2, "y" : 1 },
+					"deer8" : { "x" : 3, "y" : 1 },
+					"santa" : { "x" : 4, "y" : 0 , "centerx" : 25},
+					"rudolph1" : { "x" : 1, "y" : 2 },
+					"rudolph2" : { "x" : 2, "y" : 2 },
+					"rudolph3" : { "x" : 3, "y" : 2 },
+					"rudolph4" : { "x" : 4, "y" : 2 },
+					"rudolph5" : { "x" : 1, "y" : 3 },
+					"rudolph6" : { "x" : 2, "y" : 3 },
+					"rudolph7" : { "x" : 3, "y" : 3 },
+					"rudolph8" : { "x" : 4, "y" : 3 }
+				},
+				"sequences" : {
+					"trot" : {
+						"frames" : ["deer1","deer2","deer3","deer4","deer5","deer6","deer7","deer8"]
+					},
+					"rudolph" : {
+						"frames" : ["rudolph1","rudolph2","rudolph3","rudolph4","rudolph5","rudolph6","rudolph7","rudolph8"]
+					}
+				}
+			}, function(){
+				var n, m;
+				deer = [];
+				var leftX = 30 + (parentNode.width() >> 1) - 270;
+				for(n = 0; n < 8; n++){
+					deer[n] = new cSprite(set);
+					deer[n].position = {x : leftX + 45 * n, y : targetY};
+					deer[n].startSequence(n ? 'trot' : 'rudolph');
+					deer[n].currentSequence.currentFrame = n % 8;
+				}
+				rudolph = deer[0];
+
+				var maxDelta = 15;
+				santa = new cSprite(set);
+				santa.setFrame('santa');
+				santa.position = {x : deer[7].position.x + 60, y : targetY};
+
+				var houses = [];
+				
+				setInterval(function(){
+					// clear it
+					context.clearRect(0, 0, $('#gameCanvas').width(), $('#gameCanvas').height());
+
+					// draw the reirdeer
+					for(n = 0; n < deer.length; n++){
+						if(n == 0){
+							var dy = targetY - deer[n].position.y;
+							dy /= 4;
+							if(dy > maxDelta){
+								deer[n].position.y += maxDelta;
+							}else if(dy < -maxDelta){
+								deer[n].position.y -= maxDelta;
+							}else{
+								deer[n].position.y += dy;
+							}
+							var a = rel_ang(-45, dy, 0, 0);
+							deer[n].angle = a - Math.PI / 2;
+						}else{
+							// make the other deer follow rudolph
+							var a = rel_ang(deer[n - 1].position.x, deer[n - 1].position.y, deer[n].position.x, deer[n].position.y);
+							deer[n].angle = a - Math.PI / 2;
+							var dy = deer[n - 1].position.y - deer[n].position.y + Math.random() * 6 - 3;
+							deer[n].position.y += dy / 3;
+							deer[n].position.x += 1;
+
+							var delta = { 
+								x : deer[n].position.x - deer[n - 1].position.x,
+								y : deer[n].position.y - deer[n - 1].position.y
+							};
+							var ratio = 45 / Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+							if(ratio < 1){
+								delta.y *= ratio;
+								delta.x *= ratio;
+								deer[n].position = {
+									x : deer[n - 1].position.x + delta.x,
+									y : deer[n - 1].position.y + delta.y
+								};
+							}
+						}
+						deer[n].doSequenceStep();
+						deer[n].draw(context);
+					}
+
+					// draw santa
+					santa.position.x += 10;
+					var delta = {
+						x : santa.position.x - deer[deer.length - 1].position.x,
+						y : santa.position.y - deer[deer.length - 1].position.y
+					};
+
+					var ratio = 45 / Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+					if(ratio < 1){
+						delta.y *= ratio;
+						delta.x *= ratio;
+						santa.position = {
+							x : deer[deer.length - 1].position.x + delta.x,
+							y : deer[deer.length - 1].position.y + delta.y
+						};
+					}
+					var a = rel_ang(deer[deer.length - 1].position.x, deer[deer.length - 1].position.y, santa.position.x, santa.position.y);
+					santa.angle = a - Math.PI / 2;
+					santa.draw(context);
+
+					// draw the reins
+					context.beginPath()
+					context.moveTo(deer[0].position.x, deer[0].position.y);
+					for(n = 1; n < deer.length; n++){
+						context.lineTo(deer[n].position.x, deer[n].position.y + 5);
+						context.moveTo(deer[n].position.x, deer[n].position.y);
+					}
+					context.lineTo(santa.position.x, santa.position.y);
+					context.stroke();
+
+
+					// draw the houses
+					if(houses.length == 0 || houses[houses.length - 1].x > (houses[houses.length - 1].width >> (Math.random() < .3 ? 1 : 0))){
+						houses[houses.length] = {
+							x : -50,
+							width: 0,
+							seed : Math.floor(100000 * Math.random()),
+							giftsNeeded : Math.floor(Math.random() * 5)
+						};
+					}
+					for(n = 0; n < houses.length; n++){
+						houses[n].x += 8;
+						renderHouse(houses[n], context);
+					}
+					if(houses[0].x > 60 + context.canvas.clientWidth){
+						houses.shift();
+
+					}
+
+					// draw the gifts
+					for(n = 0; n < gifts.length; n++){
+						gifts[n].dy += 1;
+						gifts[n].x += gifts[n].dx;
+						gifts[n].y += gifts[n].dy;
+						gifts[n].angle += gifts[n].angi;
+						drawGift(gifts[n], context);
+						//if(gifts[n].y > context.canvas.clientHeight + 5){
+						for(m = 0, gotOne = 0; m < houses.length && !gotOne; m++){
+							if(gifts[n].y > context.canvas.clientHeight - houses[m].height){
+								if(houses[m].x - houses[m].width / 2 < gifts[n].x && houses[m].x + houses[m].width / 2 > gifts[n].x){
+									if(houses[m].giftsNeeded > 0){
+										houses[m].giftsNeeded --;
+										gifts.splice(n, 1);
+										n--;
+										gotOne = 1;
+									}
+								}
+							}
+
+						}
+						if(!gotOne && gifts[n].y > context.canvas.clientHeight + 5){
+							gifts.splice(n, 1);
+							n--;
+							continue;
+						}
+					}
+
+				}, 50);
+			});
+
+			$('#gameCanvas').mousemove(function(evt){
+				targetY = evt.clientY - 1 * $('#gameCanvas').position().top;
+			});
+
+			$('#gameCanvas').click(function(evt){
+				gifts[gifts.length] = {
+					x : santa.position.x,
+					y : santa.position.y,
+					width : 10 + Math.random() * 20,
+					height : 10 + Math.random() * 20,
+					angle: Math.random() * 2 * Math.PI,
+					angi: Math.random() - .5,
+					dx : 0,
+					dy : 0
+				};
+			});
+
+		});
+
+		var myRandom = function(){
+			this.seedVal = arguments.length == 1 ? arguments[0] : Math.floor(1000000 * Math.random());
+		};
+
+		myRandom.prototype.val = function(){
+			var x = Math.sin(this.seedVal++) * 10000;
+			return x - Math.floor(x);
+		};
+
+		myRandom.prototype.reSeed = function(val){
+			this.seedVal = val;
+		};
+		
+
+		function drawGift(gift, context){
+			context.save();
+			context.translate(gift.x, gift.y);
+			context.rotate(gift.angle);
+			context.fillRect(-gift.width / 2, -gift.height / 2, gift.width, gift.height);
+			context.beginPath();
+			context.arc(0, -gift.height / 2, gift.width / 4, 0, 2 * Math.PI);
+			context.arc(0, -gift.height / 2 - 2, gift.width / 6, 0, 2 * Math.PI);
+			context.arc(2, -gift.height / 2, gift.width / 5, 0, 2 * Math.PI);
+			context.arc(-2, -gift.height / 2, gift.width / 5, 0, 2 * Math.PI);
+			context.closePath();
+			context.stroke();
+			context.restore();
+		}
+
+		function renderHouse(house, context){
+			var x;
+			var random = new myRandom(house.seed);
+			var width = Math.floor(60 + 60 * random.val());
+			var height = Math.floor(40 + 100 * random.val());
+			var overhang = Math.floor(5 + 10 * random.val() * width / height);
+			var roofheight = Math.floor(20 + 70 * random.val());
+			var bottom = context.canvas.clientHeight;
+
+			// draw the basic block
+			context.fillRect(house.x - width / 2, bottom - height, width, height);
+
+			// now the roof
+			context.beginPath();
+			context.moveTo(house.x - width / 2 - overhang, bottom - height);
+			context.lineTo(house.x + width / 2 + overhang, bottom - height);
+			context.lineTo(house.x, bottom - height - roofheight);
+			context.closePath();
+			context.fill();
+
+			// now the chimney
+			if(random.val() < .5){
+				x = house.x + width / 4;// + random.val() * width / 2;
+			}else{
+				x = house.x - width / 4;// - random.val() * width / 2;
+			}
+			var chimneyHeight = random.val() * 10 + roofheight;
+			var chimneyWidth = 5 + random.val() * 10;
+			context.fillRect(
+				x,
+				bottom - height - chimneyHeight,
+				chimneyWidth,
+				height + chimneyHeight
+			);
+
+			if(random.val() > .2){
+				context.fillRect(
+					x - 1,
+					bottom - height - chimneyHeight - 4,
+					chimneyWidth + 2,
+					4
+				);
+			}
+
+			// now the number of gifts required
+			if(house.giftsNeeded > 0){
+				context.save();
+				context.fillStyle = "#444466";
+				context.textAlign = "center";
+				context.font = "35px Luckiest Guy";
+				context.fillText(house.giftsNeeded, house.x, bottom - 20);
+				context.restore();
+			}
+
+			house.width = width + overhang * 2;
+			house.height = height;
+		}
+	</script>
+</head>
+<body>
+	<div style="width: 100%; height: 40em">
+		<canvas id="gameCanvas"></canvas>
+	</div>
+</body>
+</html>

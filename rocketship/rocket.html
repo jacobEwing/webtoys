@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		body {
+			text-align:center;
+		}
+		#gameWrapper{
+			position: relative;
+			width: 800;
+			margin: auto;
+			margin-top: 4em;
+		}
+	</style>
+	<script type="text/javascript" src="jquery.min.js"></script>
+	<script type="text/javascript" src="canvasSprite.js"></script>
+	<script type="text/javascript" src="geometry.js"></script>
+	<script type="text/javascript" src="matrices.js"></script>
+	<script type="text/javascript" src="vectorPics.js"></script>
+	<script type="text/javascript">
+
+
+		var shipClass = function(){
+			this.angle = 0;
+			this.alpha = 1;
+			this.position = new matrixClass(1, 2);
+			this.position.setVals([[xResolution >> 1], [yResolution >> 1]])
+			this.baseVelocity = new matrixClass(1, 2);
+			this.baseVelocity.setVals([[0],[-0.5]]);
+			this.velocity = new matrixClass(1, 2);
+			this.velocity.setVals([[0],[0]]);
+			this.braking = false;
+		};
+		
+		var starClass = function(){
+			this.angle = Math.random() * 2 * Math.PI;
+			this.position = new matrixClass(1, 2);
+			this.position.setVals([[xResolution * Math.random()], [yResolution * Math.random()]]);
+			this.scale = Math.random() * 0.5 + 0.5;
+			this.blinkStep = 0;
+			this.angi = 0.1 + Math.random() * 0.15;
+			var ratio = (1 + Math.random()) / 2;
+			this.colour = {
+				R: Math.floor(255 - ratio * 11),
+				G: Math.floor(255 - ratio * 38),
+				B: Math.floor(255 - ratio * 162)
+			};
+			
+		};
+
+		starClass.prototype.draw = function(){
+			this.angle += this.angi;
+			if(this.blinkStep){
+				this.blinkStep--;
+			}else if(Math.random() < 0.02){
+				this.blinkStep = 5 + Math.floor(Math.random() * 6);;
+			}else if(Math.random() < 0.05){
+				this.angi = 0.1 + Math.random() * 0.15;
+			}
+			dContext.save();
+				dContext.matTranslate(this.position);
+				drawStar(dContext, this);//Math.sin(this.angle) * 0.5, this.scale, this.alpha, this.blinkStep);
+			dContext.restore();
+		};
+
+		var planetClass = function(){
+			this.position = new matrixClass(1, 2);
+			this.radius = 0;
+			this.drawScale = 1;
+			this.drawFunction = function(){};
+		}
+
+		var mouse = {
+			position : new matrixClass(1, 2),
+			leftbutton: {state : 0},
+			middlebutton: {state : 0},
+			rightbutton: {state : 0}
+		};
+
+		var dContext;
+		var xResolution = 800, yResolution = 600;
+		var centerX = xResolution >> 1;
+		var centerY = yResolution >> 1;
+		var ship = new shipClass();
+		var star = [], numStars = 25;
+		var max_speed = 10;
+		var planets = [];
+		var screenCornerDistance2 = (xResolution >> 1) * (xResolution >> 1) + (yResolution >> 1) * (yResolution >> 1);
+		var MINX = -300, MAXX = 1100, MINY = -300, MAXY = 1100;
+
+		function animate(){
+			ship.angle = 3.14159265 + rel_ang(mouse.position.val(0, 0), mouse.position.val(0, 1) - 50, ship.position.val(0, 0), ship.position.val(0, 1));
+
+			// accelerate on left click
+			if(mouse.leftbutton.state){
+				v = matrixClass.mul(ship.baseVelocity, matrixClass.rotate2d(ship.angle));
+				ship.velocity.add(v);
+				if(distance(ship.velocity) > max_speed){
+					ship.velocity = ship.velocity.unit();
+					ship.velocity.mulScalar(max_speed);
+				}
+			}else{
+				// stop if the left button isn't down and the speed is low enough
+				if(distance(ship.velocity) < 1){
+					ship.velocity.setVals([[0], [0]]);
+				}
+			}
+			// brake on right click
+			if(mouse.rightbutton.state){
+				ship.velocity.mulScalar(0.95);
+				if(distance(ship.velocity) < 1){
+					ship.velocity.setVals([[0], [0]]);
+				}
+			}
+
+			dContext.clearRect(0, 0, xResolution, yResolution);
+			dContext = document.getElementById('gameCanvas').getContext('2d');
+
+			for(n = 0; n < numStars; n++){
+				star[n].position.add(matrixClass.mulScalar(ship.velocity, -star[n].scale * .8));
+				if(star[n].position.val(0, 0) < 0){
+					star[n].position.setVals([[xResolution],[Math.random() * yResolution]]);
+				}else if(star[n].position.val(0, 0) >= xResolution){
+					star[n].position.setVals([[0],[Math.random() * yResolution]]);
+				}
+
+				if(star[n].position.val(0, 1) < 0){
+					star[n].position.setVals([[Math.random() * xResolution], [yResolution]]);
+				}else if(star[n].position.val(0, 1) >= yResolution){
+					star[n].position.setVals([[Math.random() * xResolution], [0]]);
+				}
+				star[n].draw();
+			}
+			for(n = 0; n < planets.length; n++){
+				planets[n].position.subtract(ship.velocity);
+				var x =planets[n].position.val(0, 0);
+				var y =planets[n].position.val(0, 1);
+				if(x < MINX) planets[n].position.setVal(0, 0, x + (MAXX - MINX));
+				if(x > MAXX) planets[n].position.setVal(0, 0, x - (MAXX - MINX));
+				if(y < MINY) planets[n].position.setVal(0, 1, y + (MAXY - MINY));
+				if(y > MAXY) planets[n].position.setVal(0, 1, y - (MAXY - MINY));
+				
+				var px1 = planets[n].position.val(0, 0); 
+				var py1 = planets[n].position.val(0, 1); 
+				var px2 = px1 + planets[n].radius * 2;
+				var py2 = py1 + planets[n].radius * 2;
+				if(py2 > 0 && px2 > 0 && py1 < yResolution && px1 < xResolution){
+					dContext.save();
+					dContext.matTranslate(planets[n].position);
+					drawPlanet(dContext);
+					dContext.restore();
+				}
+			}
+			dContext.save();
+				dContext.matTranslate(ship.position);
+				dContext.rotate(ship.angle);
+				dContext.scale(.4, .4);
+				drawRocket(dContext, mouse.leftbutton.state, ship.angle);
+				if((ship.velocity.val(0, 0) != 0 || ship.velocity.val(0, 1) != 0) && mouse.rightbutton.state){
+					drawBrakes(dContext);
+				}
+			dContext.restore();
+
+		}
+
+		$(document).ready(function(){
+			var n;
+			dContext = document.getElementById('gameCanvas').getContext('2d');
+
+			// add some handy functions to our context
+			dContext.matTranslate = function(mat){
+				for(var x = 0; x < mat.width; x++){
+					this.translate(mat.val(x, 0), mat.val(x, 1));
+				}
+			}
+
+			// create the stars
+			for(n = 0; n < numStars; n++){
+				star[n] = new starClass();
+				star[n].scale = 0.3 + 0.7 * n / numStars;
+				star[n].alpha = 0.35 + 0.65 * n / numStars;
+				star[n].colour.R = Math.floor(star[n].colour.R * star[n].alpha);
+				star[n].colour.G = Math.floor(star[n].colour.G * star[n].alpha);
+				star[n].colour.B = Math.floor(star[n].colour.B * star[n].alpha);
+
+			}
+
+			// create the planets
+			planets[0] = new planetClass();
+			planets[0].drawFunction = drawPlanet;
+			planets[0].position.setVals([[270], [350]]);
+			planets[0].drawScale = 3;
+			planets[0].radius = 40 * planets[0].drawScale;
+
+
+			// eleminate the right-click menu
+			document.getElementById('gameCanvas').addEventListener('contextmenu', function(evt){evt.preventDefault();});
+
+			// add mouse event handlers
+			$('#gameCanvas').mousedown(function(evt){ 
+				if(evt.which == 1) mouse.leftbutton.state = 1;
+				else if (evt.which == 2) mouse.middlebutton.state = 1;
+				else if (evt.which == 3) mouse.rightbutton.state = 1;
+				return false;
+			});
+
+			$('#gameCanvas').mouseup(function(evt){ 
+				if(evt.which == 1) mouse.leftbutton.state = 0;
+				else if (evt.which == 2) mouse.middlebutton.state = 0;
+				else if (evt.which == 3) mouse.rightbutton.state = 0;
+				return false;
+			});
+
+			$('#gameCanvas').mousemove(function(evt){
+				position = $('#gameCanvas').position();
+				mouse.position.setVals([[evt.pageX - position.left], [evt.pageY - position.top]]);
+			});
+
+			//Add a placeholder function for browsers that don't have setLineDash()
+			if (!dContext.setLineDash) {
+				dContext.setLineDash = function () {}
+			}
+			// and start the game!
+			setInterval(animate, 20);
+		});
+
+
+	</script>
+</head>
+<body>
+	<div id="gameWrapper">
+		<canvas id="gameCanvas" width="800" height="600" style="background-color: #112;"></canvas>
+	</div>
+	<div id="debug" style="text-align:left"></div>
+</body>
+</html>

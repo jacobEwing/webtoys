@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script type="text/javascript">
+		'use strict';
+		/*
+			TODO:
+			add dynamic favicon
+			add similar load/save interface for palettes
+			colour manipulating features:
+				- change the sine wave frequency in the palette (per primary)
+				- add two-slider sine wave range adjusters
+				- import from manyland creation URL and from base64 code
+				- add line graph of rgb values above palette adjusters
+
+		*/
+		var canvas, context;
+		var palette;
+		var scale = 1;
+		var map;
+		var config;
+		var paletteTabs;
+
+		var defaultConfig = {
+			"map": {
+				"width": 4,
+				"height": 4,
+				"x": 0,
+				"y": 0,
+				"accuracy": 256,
+				"coefficient": 1,
+				"maxColourIndex": 54
+			},
+			"palette": {
+				"red": {
+					"offset": -.47,
+					"stagger": 0,
+					"period" : 1
+				},
+				"green": {
+					"offset": 0,
+					"stagger": 0,
+					"period" : 1
+				},
+				"blue": {
+					"offset": .7,
+					"stagger": 0,
+					"period" : 1
+				},
+				"master" : {
+					"offset": 0,
+					"stagger": 0
+				}
+			}
+		}
+
+		function buildPalette(settings){
+			if(settings == undefined) settings = config;
+			var n;
+			var plt = [];
+			var maxColour = settings.map.maxColourIndex;
+			if(settings.palette.master == undefined){
+				settings.palette.master = JSON.parse(JSON.stringify(defaultConfig.palette.master));
+			}
+
+			for(n = 0; n < maxColour; n++){
+				plt[n] = createColour(n, settings);
+			}
+			plt[n] = {red : 0, green : 0, blue : 0, alpha : 1};
+			return plt;
+		}
+
+		function createColour(idx, config){
+			var maxColour = config.map.maxColourIndex;
+			var ang = idx * 2 * Math.PI / maxColour;
+			var rval ={
+				red : Math.floor(128 + 127 * 
+					Math.sin(
+						ang * config.palette.red.period + config.palette.red.offset + config.palette.master.offset +
+						(config.palette.red.stagger + config.palette.master.stagger) * (idx & 1)  
+					)
+				),
+				green : Math.floor(128 + 127 * 
+					Math.sin(
+						ang * config.palette.green.period + config.palette.green.offset + config.palette.master.offset +
+						(config.palette.green.stagger + config.palette.master.stagger) * (idx & 1)  
+					)
+				),
+				blue : Math.floor(128 + 127 * 
+					Math.sin(
+						ang * config.palette.blue.period + config.palette.blue.offset + config.palette.master.offset +
+						(config.palette.blue.stagger + config.palette.master.stagger) * (idx & 1)  
+					)
+				),
+				alpha : 1
+			};
+			return rval;
+		}
+
+		function mandelbrot(x, y, accuracy) {
+			let a = 0, b = 0, rx = 0, ry = 0;
+			let i = 0;
+			for (i = 0; i <= accuracy && rx * rx + ry * ry <= 4; i++) {
+				rx = a * a - b * b + x;
+				ry = 2 * a * b + y;
+				a = rx;
+				b = ry;
+			}
+			return i;
+		}
+		/*
+		function julia(z, zi, accuracy){
+			var count = 0;
+			var c = -1.7494912401653993;
+			var ci = -6.787327887005931e-7;
+
+			//var c = -1.749993342342146;
+			//var ci = -1.0661042503018772e-7;
+
+			//var c = -1.7687043905848612;
+			//var ci = -0.0027296858693763577;
+
+			var zsq = z * z;
+			var zisq = zi * zi, nz = 0, nzi = 0;
+
+			while((count <= accuracy) && ((zsq + zisq) < 4.)){
+				nz = zsq - zisq;
+				nzi = (z * zi) * 2.;
+				z = nz + c;
+				zi = nzi + ci;
+				zsq = z * z;
+				zisq = zi * zi;
+				count++;
+			}
+
+			return count;
+		}
+		*/
+
+		// used for rendering images outside of the view area
+		function staticRender(targetCanvas, width, height, config, callback){
+			var x, y;
+			var c, ci
+			var widthRatio = scale * config.map.width / width;
+			var heightRatio = scale * config.map.height / height;
+			var plt = buildPalette(config);
+
+			var ciStart = config.map.y - config.map.height / 2;
+			var colour;
+			var ctx = targetCanvas.getContext('2d');
+			c =  config.map.x - config.map.width / 2;
+			for(x = 0; x < targetCanvas.width; x++){
+				ci = ciStart;
+
+				for(y = 0; y < targetCanvas.height; y++){
+
+					colour = mandelbrot(c, ci, config.map.accuracy);
+					//colour = julia(c, ci, config.map.accuracy);
+					if(colour > config.map.accuracy){
+						colour = plt[config.map.maxColourIndex];
+					}else{
+						colour = plt[Math.round(colour * config.map.coefficient) % config.map.maxColourIndex];
+					}
+					ctx.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
+					ctx.fillRect(x * scale, y * scale, scale, scale);
+
+					ci += heightRatio;
+
+				}
+				c += widthRatio;
+			}
+			if(callback != undefined){
+				callback();
+			}
+		}
+
+		function render(){
+			var x, y;
+			var c, ci
+			var widthRatio = scale * config.map.width / canvas.width;
+			var heightRatio = scale * config.map.height / canvas.height;
+
+			var ciStart = config.map.y - config.map.height / 2;
+			var colour;
+			var count;
+
+			c =  config.map.x - config.map.width / 2;
+			map = [];
+			for(x = 0; x < canvas.width; x++){
+				map[x] = [];
+				ci = ciStart;
+
+				for(y = 0; y < canvas.height; y++){
+					map[x][y] = mandelbrot(c, ci, config.map.accuracy);
+					//map[x][y] = julia(c, ci, config.map.accuracy);
+					if(map[x][y] > config.map.accuracy){
+						colour = palette[config.map.maxColourIndex];
+					}else{
+						colour = palette[Math.round(map[x][y] * config.map.coefficient) % config.map.maxColourIndex];
+					}
+					putPixel(x, y, colour);
+					ci += heightRatio;
+
+				}
+				c += widthRatio;
+			}
+		}
+
+		function refresh(){
+			var x, y, colour;
+			for(x = 0; x < canvas.width; x++){
+				for(y = 0; y < canvas.height; y++){
+					if(map[x][y] > config.map.accuracy){
+						colour = palette[config.map.maxColourIndex];
+					}else{
+						colour = palette[Math.round(map[x][y] * config.map.coefficient) % config.map.maxColourIndex];
+					}
+					putPixel(x, y, colour);
+
+				}
+			}
+		}
+
+		function putPixel(x, y, colour){
+			context.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
+			context.fillRect(x * scale, y * scale, scale, scale);
+		}
+
+		function resetMandelbrot(){
+			var map  = JSON.parse(JSON.stringify(defaultConfig.map));
+
+			config.map.x = map.x;
+			config.map.y = map.y;
+			config.map.width = map.width;
+			config.map.height = map.height;
+			config.map.accuracy = map.accuracy;
+
+			document.getElementById('xOffset').value = config.map.x;
+			document.getElementById('yOffset').value = config.map.y;
+			document.getElementById('width').value = config.map.width;
+			document.getElementById('accuracy').value = config.map.accuracy;
+			render();
+		}
+
+		function resetRenderOptions(){
+			var map  = JSON.parse(JSON.stringify(defaultConfig.map));
+			config.map.coefficient = map.coefficient;
+			config.map.maxColourIndex = map.maxColourIndex;
+			scale = 1;
+
+			document.getElementById('coefficient').value = config.map.coefficient;
+			document.getElementById('scale').value = 1;
+			document.getElementById('numcolours').value = config.map.maxColourIndex;
+			palette = buildPalette();
+			render();
+
+		}
+
+		function updateFields(){
+			document.getElementById('xOffset').value = config.map.x;
+			document.getElementById('yOffset').value = config.map.y;
+			document.getElementById('width').value = config.map.width;
+			document.getElementById('scale').value = scale;
+			document.getElementById('accuracy').value = config.map.accuracy;
+			document.getElementById('coefficient').value = config.map.coefficient;
+			document.getElementById('numcolours').value = config.map.maxColourIndex;
+
+		};
+
+
+		/* file management */
+		function saveLocation(){
+			var renderings;
+			if(localStorage.renderings == undefined){
+				renderings = [];
+			}else{
+				renderings = JSON.parse(localStorage.getItem('renderings'));
+			}
+
+			var record = JSON.parse(JSON.stringify(config));
+
+			renderings[renderings.length] = record;
+			addLoadButton(record);
+			localStorage.setItem('renderings', JSON.stringify(renderings));
+
+		}
+
+		function deleteSavedLocation(idx){
+			var renderings;
+			if(localStorage.renderings == undefined) return;
+			renderings = JSON.parse(localStorage.getItem('renderings'));
+
+			if(renderings.length > idx){ // greater than because length is always max index + 1
+				renderings.splice(idx, 1);
+			}
+			localStorage.setItem('renderings', JSON.stringify(renderings));
+
+		}
+
+		function addLoadButton(rendering, target){
+			var button, n;
+			if(target == undefined){
+				target = document.getElementById('savedRenderings');
+			}
+			button = document.createElement('div');
+			button.classList.add('previewButton');
+			var cnvs = document.createElement('canvas');
+			cnvs.width = 96;
+			cnvs.height = 96;
+			staticRender(cnvs, cnvs.width, cnvs.height, rendering);
+			button.appendChild(cnvs);
+			var data = {};
+
+			button.onclick = function(){
+				config = JSON.parse(JSON.stringify(rendering));
+				palette = buildPalette(config);
+				initPaletteAdjusters();
+
+				updateFields();
+				render();
+			}
+			button.onmouseleave = function(){
+				var n;
+				for(n of this.querySelectorAll('.deleteIcon')){
+					n.parentElement.removeChild(n);
+				}
+			}
+			button.onmouseenter = function(){
+				if(this.querySelectorAll('.deleteIcon').length > 0) return;
+				var deleteButton = document.createElement('div');
+				deleteButton.classList.add('deleteIcon');
+				deleteButton.innerHTML = 'x';
+				button.prepend(deleteButton);
+
+				deleteButton.onclick = function(e){
+					if(confirm("are you sure want to delete this rendering?")){
+						deleteSavedLocation(getNodePosition(button));
+						button.parentNode.removeChild(button);
+					}
+					e.stopPropagation();
+				}
+
+			}
+			target.appendChild(button);
+		}
+
+		// this function is to handle backward compatability with safed files using older code (and feature lists)
+		function versionSync(configuration){
+			for(var primary of ['red', 'green', 'blue']){
+				if(configuration.palette[primary].period == undefined){
+					configuration.palette[primary].period = defaultConfig.palette[primary].period;
+				}
+			}
+		}
+
+		function renderSavedLocations(){
+			var renderings;
+			if(localStorage.renderings == undefined){
+				renderings = [defaultConfig];
+				localStorage.setItem('renderings', JSON.stringify(renderings));
+			}else{
+				renderings = JSON.parse(localStorage.getItem('renderings'));
+			}
+
+			var n;
+			var target = document.getElementById('savedRenderings');
+			var addLoadCall = function(idx){
+				setTimeout(function(){addLoadButton(renderings[idx], target)}, 100 * idx);
+
+			}
+			for(n = 0; n < renderings.length; n++){
+				versionSync(renderings[n]);
+				addLoadCall(n);
+			}
+
+
+		}
+		/* export interface functions */
+		function exportManyland(){
+			var buttons = [
+				{
+					label : 'Close',
+					action : closePopup
+				}
+			];
+
+			var content = document.getElementById("manylandExportTemplate").cloneNode(true);
+			content.id = "manylandExportForm";
+			var codeBox = content.querySelector(".codeBox");
+			codeBox.innerHTML = btoa(JSON.stringify(config));
+
+			if(config.map.maxColourIndex > 54){
+				content.querySelector(".compatiblePaletteText").style.display = "none";
+				content.querySelector(".incompatiblePaletteText").style.display = "block";
+			}
+			popup(content, buttons);
+
+		}
+
+		function showWelcomeWindow(){
+			popup(document.getElementById("introTemplate").cloneNode(true), [{label : 'Close', action : closePopup}]);
+		}
+
+
+		function exportImage(){
+			var buttons = [
+				{
+					label : 'Close',
+					action : closePopup
+				},
+				{
+					label : 'Download',
+					action : function(){
+						var cfg = JSON.parse(JSON.stringify(config));
+						var rendering = document.createElement('canvas');
+						var ctx = rendering.getContext('2d');
+
+						var width = 1 * widthField.value;
+						var height = 1 * heightField.value;
+						if(width > height){
+							cfg.map.width = cfg.map.width * width / height;
+						}else{
+							cfg.map.height = cfg.map.height * height / width;
+						}
+						rendering.width = width;
+						rendering.height = height;
+						closePopup();
+
+						staticRender(rendering, width, height, cfg);
+
+						var image = rendering.toDataURL("image/png", 1.0).replace("image/png", "image/octet-stream");
+						var link = document.createElement('a');
+						link.download = 'rendering.png';
+						link.href = image;
+						link.click();
+					}
+
+
+				}
+
+			];
+
+			// clone the web form
+			var content = document.getElementById("downloadImageTemplate").cloneNode(true);
+			content.id = "downloadImageForm";
+
+			// enter the current dimensions in the size fields
+			var widthField = content.querySelector('[name="imageWidth"]')
+			var heightField = content.querySelector('[name="imageHeight"]');
+			widthField.value = canvas.width;
+			heightField.value = canvas.height;
+
+			// create our preview image
+			var previewMaxSize = 256;
+			var previewArea = {};
+			var previewTarget = content.querySelector('.previewWrapper');
+
+			var updatePreview = function(){
+				var newConfig = JSON.parse(JSON.stringify(config));
+
+				var newWidth = 1 * widthField.value;
+				var newHeight = 1 * heightField.value;
+				var ratio;
+				if(newWidth > newHeight){
+					if(newWidth > previewMaxSize){
+						previewArea = {
+							width : previewMaxSize,
+							height : Math.round(newHeight * previewMaxSize / newWidth)
+						}
+					}else{
+						previewArea = {
+							width: newWidth,
+							height: newHeight
+						}
+					}
+					newConfig.map.width = newConfig.map.height * previewArea.width / previewArea.height;
+				}else{
+					if(newHeight > previewMaxSize){
+						previewArea = {
+							width : Math.round(newWidth * previewMaxSize / newHeight),
+							height : previewMaxSize
+						}
+					}else{
+						previewArea = {
+							width: newWidth,
+							height: newHeight
+						}
+					}
+					newConfig.map.height = newConfig.map.width * previewArea.height / previewArea.width;
+				}
+
+				// we now have dimensions within the preview limits
+				// next we create a canvas, render, and add to the div
+
+
+				var previewCanvas = document.createElement('canvas');
+				previewCanvas.width = previewArea.width;
+				previewCanvas.height = previewArea.height;
+				var ctx = previewCanvas.getContext('2d');
+				staticRender(previewCanvas, previewArea.width, previewArea.height, newConfig);
+
+				emptyNode(previewTarget);
+				previewTarget.appendChild(previewCanvas);
+
+			}
+
+			widthField.onchange = updatePreview;
+			heightField.onchange = updatePreview;
+			updatePreview();
+
+			popup(content, buttons);
+		}
+
+		function getNodePosition(element){
+			var i = 0;
+			while (element = element.previousElementSibling){
+				i++;
+			}
+			return i;
+		}
+
+		function emptyNode(node){
+			while (node.firstChild) {
+				node.removeChild(node.lastChild);
+			}
+		}
+
+		function popup(content, buttons){
+			var n, button, wrapper, popup;
+
+			wrapper = document.createElement('DIV');
+			wrapper.classList.add('popupContent');
+			wrapper.appendChild(content);
+
+			var popup = document.getElementById('popupWrapper');
+			popup.innerHTML = '';
+			popup.appendChild(wrapper);
+
+			for(var n in buttons){
+				button = document.createElement('DIV');
+				button.classList.add('button');
+				button.innerHTML = buttons[n].label;
+				button.onclick = buttons[n].action;
+				popup.appendChild(button);
+			}
+			popup.style.display = 'block';
+
+		}
+
+		function closePopup(){
+			var wrapper = document.getElementById('popupWrapper');
+			wrapper.style.display = 'none';
+			wrapper.innerHTML = '';
+		}
+
+		function tabinate(element, params){
+			if(params == undefined) params = {};
+			var n;
+			var defaults = {
+				activeTab : 0,
+				spacing : 2,
+				leftTabMargin : 2
+			}
+			for(n in defaults){
+				if(params[n] == undefined){
+					params[n] = defaults[n];
+				}
+			}
+
+			var tabs = element.children;
+			var tab, content, spacing = params.spacing;
+			var tabX = params.leftTabMargin;
+
+			element.classList.add('tabinator');
+			for(n = 0; n < tabs.length; n++){
+				content = tabs[n];
+				tab = document.createElement('div');
+				content.prepend(tab);
+				tab.innerHTML = content.dataset.tab;
+				tab.classList.add('tab');
+				tab.style.left = tabX + 'px';
+
+				if(n == params.activeTab){
+					content.classList.add('active');
+				}
+				tab.onclick = function(){
+					var n;
+					for(n = 0; n < tabs.length; n++){
+						if(tabs[n] == this.parentElement){
+							tabs[n].classList.add('active');
+						}else{
+							tabs[n].classList.remove('active');
+						}
+					}
+				}
+
+				tabX += tab.getBoundingClientRect().width + params.spacing;
+			}
+
+		}
+
+		/*  initialization code below this point */
+		function initialize(step){
+			if(step == undefined) step = 'initialize';
+			switch(step){
+				case 'initialize':
+					config = JSON.parse(JSON.stringify(defaultConfig));
+					
+					setTimeout(function(){initialize('create canvas');}, 0);
+
+					tabinate(document.getElementById('paletteTabs'));
+
+					break;
+				case 'create canvas':
+					var canvasWrapper = document.getElementById('canvasWrapper');
+					canvas = document.createElement('canvas');
+					canvas.width = canvasWrapper.offsetWidth;
+					canvas.height = canvasWrapper.offsetHeight;
+					canvas.style.backgroundColor = '#000';
+					canvasWrapper.appendChild(canvas);
+
+
+					context = canvas.getContext('2d');
+
+					setTimeout(function(){initialize('build palette');}, 0);
+					break;
+				case 'build palette':
+					palette = buildPalette();
+					setTimeout(function(){initialize('initialize fractal');}, 0);
+					break;
+
+				case 'initialize fractal':
+					// make sure that our area rendered is the same proportions as the actual viewport
+					config.map.height = config.map.width * canvas.height / canvas.width;
+					render();
+					updateFields();
+					setTimeout(function(){initialize('add event triggers');}, 0);
+					break;
+
+				case 'add event triggers':
+					initMouseWheel();
+					initMouseDrag();
+					initMouseClick();
+					initFieldUpdates();
+					initPaletteAdjusters();
+					setTimeout(function(){initialize('populate saved files');}, 0);
+					break;
+
+				case 'populate saved files':
+					showWelcomeWindow();
+					renderSavedLocations();
+
+
+
+
+			}
+		}
+
+		function initMouseWheel(){
+			canvas.onwheel = (function(){
+				var zoomChange = 0;
+				return function(e){
+					e.preventDefault();
+					e.stopPropagation();
+
+					zoomChange += e.deltaY > 0 ? 1 : -1;
+					var myDelta = zoomChange;
+
+					setTimeout(function(){
+						if(myDelta == zoomChange){
+							var oldWidth = config.map.width;
+							var oldHeight = config.map.height;
+
+							// zoom based on how much the mouse wheel rolled
+							var multiple = (1 - Math.abs(zoomChange) * .1);
+							if(multiple < .1) multiple = .1;
+							if(zoomChange > 0){
+								config.map.width /= multiple;
+							}else{
+								config.map.width *= multiple;
+							}
+							config.map.height = config.map.width *  canvas.height / canvas.width;
+
+							var clickX = e.pageX - canvas.offsetLeft;
+							var clickY = e.pageY - canvas.offsetTop;
+
+							// offset so that the point under the mouse remains under the mouse
+							config.map.x = (clickX * oldWidth - clickX * config.map.width) / canvas.width - (oldWidth - config.map.width) / 2 + config.map.x;
+							config.map.y = (clickY * oldHeight - clickY * config.map.height) / canvas.height - (oldHeight - config.map.height) / 2 + config.map.y;
+
+							zoomChange = 0;
+							updateFields();
+							render();
+						}
+					}, 200);
+					return false;
+				};
+			})();
+		}
+
+		function initMouseClick(){
+			canvas.onclick = function(e){
+				var clickX = e.offsetX;
+				var clickY = e.offsetY;
+				var leftX = config.map.x - config.map.width / 2;
+				var topY = config.map.y - config.map.height / 2;
+				var newX = clickX * config.map.width / canvas.width + leftX;
+				var newY = clickY * config.map.height / canvas.height + topY;
+				config.map.x = newX;
+				config.map.y = newY;
+				render();
+			}
+		}
+
+		function initMouseDrag(){
+			var dragStart = {}, dragging = 0;
+			canvas.onmousedown = function(e){
+				dragging = 1;
+				dragStart.x = e.offsetX;
+				dragStart.y = e.offsetY;
+			}
+			canvas.onmouseup = function(e){
+				dragging = 0;
+				var dx = dragStart.x - e.offsetX;
+				var dy = dragStart.y - e.offsetY;
+				dx *=  config.map.width / canvas.width;
+				dy *=  config.map.height / canvas.height;
+				config.map.x = 1 * config.map.x + dx;
+				config.map.y = 1 * config.map.y + dy;
+				updateFields();
+				render();
+			}
+		}
+
+		function initFieldUpdates(){
+			document.getElementById('xOffset').onchange = function(){
+				if(isNaN(this.value)){
+					this.classList.add('error');
+				}else{
+					config.map.x = 1 * this.value;
+					this.classList.remove('error');
+					render();
+				}
+			}
+			document.getElementById('yOffset').onchange = function(){
+				if(isNaN(this.value)){
+					this.classList.add('error');
+				}else{
+					config.map.y = 1 * this.value;
+					this.classList.remove('error');
+					render();
+				}
+			}
+			document.getElementById('width').onchange = function(){
+				if(isNaN(this.value)){
+					this.classList.add('error');
+				}else{
+					config.map.width = 1 * this.value;
+					config.map.height = 1 * this.value;
+					this.classList.remove('error');
+					render();
+				}
+			}
+			document.getElementById('scale').onchange = function(){
+				if(isNaN(this.value) || this.value < 1){
+					this.classList.add('error');
+				}else{
+					scale = 1 * this.value;
+					this.classList.remove('error');
+					render();
+				}
+			}
+			document.getElementById('accuracy').onchange = function(){
+				if(isNaN(this.value)){
+					this.classList.add('error');
+				}else{
+					config.map.accuracy = 1 * this.value;
+					this.classList.remove('error');
+					render();
+				}
+			}
+
+			document.getElementById('coefficient').onchange = function(){
+				if(isNaN(this.value) || this.value <= 0){
+					this.classList.add('error');
+				}else{
+					config.map.coefficient = 1 * this.value;
+					this.classList.remove('error');
+					refresh();
+				}
+			}
+
+			document.getElementById('numcolours').onchange = function(){
+				if(isNaN(this.value) || this.value <= 0){
+					this.classList.add('error');
+				}else{
+					config.map.maxColourIndex = 1 * this.value;
+					palette = buildPalette();
+					this.classList.remove('error');
+					refresh();
+				}
+			}
+		}
+
+		function multiplyAccuracy(factor){
+			config.map.accuracy = Math.round(config.map.accuracy * factor) ;
+			document.getElementById('accuracy').value = config.map.accuracy;
+			render();
+		}
+
+
+		function initPaletteAdjusters(){
+			var n, c, elements = {};
+			for(c of ['red', 'green', 'blue', 'master']){
+				elements[c] = {
+					offset: document.getElementById(c + 'Offset'),
+					offsetText: document.getElementById(c + 'OffsetText'),
+					stagger: document.getElementById(c + 'Stagger'),
+					staggerText: document.getElementById(c + 'StaggerText'),
+				}
+				if(c != 'master'){
+					elements[c].period = document.getElementById(c + 'Period');
+					elements[c].periodText = document.getElementById(c + 'PeriodText');
+				}
+			}
+
+			for(n in elements){
+				(function(n){
+					if(config.palette[n] != undefined){
+						elements[n].offset.value = config.palette[n].offset;
+						elements[n].offsetText.value = config.palette[n].offset;
+						if(n != 'master'){
+							elements[n].period.value = config.palette[n].period;
+							elements[n].periodText.value = config.palette[n].period;
+						}
+					}else{
+						elements[n].offset.value = defaultConfig.palette[n].offset;
+						elements[n].offsetText.value = defaultConfig.palette[n].offset;
+						if(n != 'master'){
+							elements[n].period.value = defaultConfig.palette[n].period;
+							elements[n].periodText.value = defaultConfig.palette[n].period;
+						}
+
+						config.palette[n] = elements[n];
+					}
+					elements[n].offset.onchange = function(){
+						var val = 1 * this.value;
+						config.palette[n].offset = val;
+						elements[n].offsetText.value = val;
+						palette = buildPalette();
+						refresh();
+					};
+
+					elements[n].offsetText.onchange = function(){
+						var val = 1 * this.value;
+						config.palette[n].offset = val;
+						elements[n].offset.value = val;
+						palette = buildPalette();
+						refresh();
+					};
+
+					elements[n].stagger.value = config.palette[n].stagger;
+					elements[n].staggerText.value = config.palette[n].stagger;
+					elements[n].stagger.onchange = function(){
+						var val = 1 * this.value;
+						config.palette[n].stagger = val;
+						elements[n].staggerText.value = val;
+						palette = buildPalette();
+						refresh();
+					};
+
+					elements[n].staggerText.onchange = function(){
+						var val = 1 * this.value;
+						config.palette[n].stagger = val;
+						elements[n].stagger.value = val;
+						palette = buildPalette();
+						refresh();
+					};
+
+					if(elements[n].period != undefined){
+						elements[n].period.onchange = function(){
+							var val = 1 * this.value;
+							config.palette[n].period = val;
+							elements[n].periodText.value = val;
+							palette = buildPalette();
+							refresh();
+						};
+
+						elements[n].periodText.onchange = function(){
+							var val = 1 * this.value;
+							config.palette[n].period = val;
+							elements[n].period.value = val;
+							palette = buildPalette();
+							refresh();
+						}
+					}
+
+
+
+				})(n)
+			}
+
+		}
+
+		window.onload = function(){initialize()};
+
+	</script>
+
+	<style type="text/css">
+		body{
+			width: 262mm;
+			margin: auto;
+			padding-top: 1cm;
+			font-family: Arial;
+		}
+		#canvasWrapper{
+			margin: 0;
+			padding: 0;
+			width : 15cm;
+			height: 15cm;
+			display: inline-block;
+		}
+		#leftColumn{
+			margin: 0;
+			padding: 0;
+			width : 15cm;
+			display: inline-block;
+		}
+		#toolbox{
+			width: 11cm;
+			height: 15cm;
+			display: inline-block;
+			float: right;
+		}
+
+		#savedRenderings{
+			min-height: 3cm;
+			overflow-x: scroll;
+		}
+		#savedWrapper{
+			border-radius: 2mm;
+			padding: 1mm;
+			box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+			white-space: nowrap;
+			cursor: pointer;
+			position: relative;
+			overflow: hidden;
+		}
+
+		#leftColumn > *{
+			margin-bottom: 2mm;
+		}
+
+		div.toolWrapper{
+			margin: auto;
+			padding: 2mm;
+			margin-bottom: 2mm;
+			line-height: 1.5em;
+			border-radius: 2mm;
+			box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+		}
+
+		div.button{
+			cursor:pointer;
+			white-space: nowrap;
+			display: inline-block;
+			border-radius: 2mm;
+			padding: 1mm;
+			background-color: #FFF;
+			box-shadow: rgb(50 50 93 / 25%) 0px 50px 100px -20px, rgb(0 0 0 / 30%) 0px 30px 60px -30px, rgb(10 37 64 / 35%) 0px -2px 6px 0px inset;
+		}
+
+		div.button:active{
+			box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+		}
+
+		div.smallButton{
+			white-space: nowrap;
+			display: inline-block;
+			border-radius: 2mm;
+			padding: 0 1em;
+			background-color: #FFF;
+			font-size: small;
+			box-shadow: rgb(50 50 93 / 25%) 0px 50px 100px -20px, rgb(0 0 0 / 30%) 0px 30px 60px -30px, rgb(10 37 64 / 35%) 0px -2px 6px 0px inset;
+		}
+
+		div.smallButton:active{
+			box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+		}
+
+		div.previewButton{
+			display: inline;
+			margin: 1mm;
+			position:relative;
+		}
+
+		#settings > div input{
+			float: right;
+			width: 50%;
+		}
+
+		input.error{
+			background-color: #FAA;
+		}
+		h1{
+			display: block;
+			height: 1.2em;
+			line-height: 1.2em;
+			font-size: 90%;
+			text-align: center;
+			padding: .1em 1em;
+		}
+		.toolWrapper >h1{
+			margin-top:0;
+			border-bottom: 1px solid #aaa;
+		}
+
+		#colourControl > h1{
+			border-bottom: none;
+			margin-bottom: 1mm;
+		}
+
+		h2{
+			text-align:center;
+			border-bottom: 1px solid #aaa;
+			margin:0;
+			padding-bottom:2mm;
+		}
+		#colourControl > input{
+			float: right;
+			width: 50%;
+		}
+
+		.colourAdjuster{
+			width: 100%;
+		}
+
+		.colourText{
+			width: 4em;
+			border-radius: 1mm;
+			border: 1px solid #aaa;
+			margin: 0;
+			height: 1.4em;
+		}
+
+		td.shortTD{
+			width: 4em;
+		}
+
+		div.deleteIcon{
+			display: inline-block;
+			border-radius: 0.1em;
+			width: 1.5em;
+			height: 1.5em;
+			border-radius: 1em;
+			background-color: #C22;
+			box-shadow: rgba(255, 255, 255, 0.8) 0px 2px 4px 0 inset, rgba(0, 0, 0, 0.3) 0px 2px 4px, rgba(0, 0, 0, 0.22) 0px 2px 4px;
+			line-height: 1.5em;
+			text-align: center;
+			color: #FFF;
+			font-weight: bold;
+			position:absolute;
+			cursor: not-allowed;
+		}
+
+		#exports{
+			text-align: center;
+		}
+
+		#popupWrapper {
+			width: 100%;
+			height: 100%;
+			position: fixed;
+			top:0;
+			left: 0;
+			display:none;
+			background-color: rgba(22,22,22,0.5);
+			text-align: center;
+			z-index: 100;
+		}
+
+		div.popupContent {
+			background:#FFF; 
+			border-radius: 5mm;
+			margin: auto;
+			margin-bottom: 5mm;
+			min-width: 320px; 
+			max-width: 80%;
+			position:relative; 
+			margin-top: 5%;
+			padding:30px; 
+			text-align: left;
+			max-width: 20cm;
+			box-shadow: rgb(0, 0, 0, 0.35) 0px 2mm 2mm;
+
+		}
+
+		div.codeBox{
+			overflow-wrap: break-word;
+			border: 1px solid #888;
+			padding: 3mm;
+			margin: auto;
+			border-radius: 2mm;
+			font-family: monospace;
+			box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 5px inset;
+			width: 80%;
+			min-height: 3cm;
+			font-size: 13px;
+		}
+		.downloadImageForm{
+			margin: auto;
+			padding: 5mm;
+			width: 80%;
+			border: 1px solid #ccc;
+			border-radius: 5mm;
+			align-items: center;
+		}
+
+		.downloadImageForm > div {
+			display:inline-block;
+		}
+
+		.previewWrapper{
+			text-align:center;
+			min-height: 280px;
+			position:relative;
+		}
+		.previewWrapper > canvas {
+			border: 1px solid #aaa;
+			position: absolute;
+			margin: auto;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+		}
+
+		span.fieldLabel{
+			color: #AAA;
+			padding-left: 2em;
+
+		}
+		.doubleInputRow > div {
+			width: 40%;
+			display: inline-block;
+			padding: 0 4.5%;
+		}
+		.doubleInputRow > div > input {
+			float: right
+		}
+
+		.tabinator {
+			display: grid;
+			grid-template-columns: 1fr;
+			margin-top:1.5em;
+			background-color: #FFF;
+			border-top:1px solid #000;
+		}
+
+		.tabinator > * {
+			grid-row-start: 1;
+			grid-column-start: 1;
+			background-color: inherit;
+			z-index: 1;
+			border-radius: inherit;
+			border-color: inherit;
+		}
+
+		.tabinator > .active {
+			z-index: 2;
+		}
+
+		.tabinator > * > .tab {
+			height: 1.5em;
+			border: 1px solid;
+			border-width: 1px 1px 0 1px;
+			border-radius: 1mm 1mm 0 0;
+			border-color: inherit;
+			display: inline-block;
+			position: absolute;
+			margin-top: -webkit-calc(-1.5em - 1px);
+			margin-top: calc(-1.5em - 1px);
+
+			background-color: inherit;
+			padding: 0 .25em;
+			box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			-webkit-box-sizing: border-box;
+		}
+		.tabinator > .active > .tab {
+			box-sizing: content-box;
+			-moz-box-sizing: content-box;
+			-webkit-box-sizing: content-box;
+		}
+
+		.tabinator > :not(.active){
+			filter: contrast(70%);
+		}
+
+		/* customizing */
+		.tabinator {
+			position: relative;
+			background-color: #FFF;
+			border: 1px solid #AAA;
+			border-radius: .1em;
+		}
+
+		#paletteTabs.tabinator table{
+			width: 100%;
+		}
+
+	</style>
+</head>
+<body>
+	<div id="toolbox">
+		<div id="settings" class="toolWrapper">
+			<h1>Parameters</h1>
+			<div>
+				<input type="number" id="xOffset" tabindex="1"/>
+				X Coordinate 
+			</div><div>
+				<input type="number" id="yOffset" tabindex="2"/>
+				Y Coordinate
+			</div><div>
+				<input type="number" id="width" tabindex="3"/>
+				Area Size
+			</div><div>
+				<div style="float:right; display:inline-block">
+					<input type="number" id="accuracy" style="float:none; width:8.25em"/>
+					<div class="smallButton" id="doubleAccuracy" style="margin-right 0; margin-left: auto" onclick="multiplyAccuracy(2)">&times;2</div>
+					<div class="smallButton" id="halveAccuracy" style="margin-right 0; margin-left: auto" onclick="multiplyAccuracy(.5)">&divide;2</div>
+				</div>
+				Accuracy
+			</div>
+			<div style="margin-top: 0.5em; text-align:center;">
+				<div class="button" onclick="setTimeout(resetMandelbrot, 0)">Reset</div>
+			</div>
+		</div>
+
+		<div id="renderOptions" class="toolWrapper">
+			<h1>Rendering</h1>
+			<div class="doubleInputRow">
+				<div>
+					<span>Coefficent:</span>
+					<input type="number" id="coefficient" data-info="Multiple of the number returned by " size="4" tabindex="5"/>
+				</div>
+				<div>
+					<span>Pixel Scale:</span>
+					<input type="number" id="scale" step="1" min="1" size="4" tabindex="6"/>
+				</div>
+				<div>
+					<span>Palette Size:</span>
+					<input type="number" id="numcolours" size="4" tabindex="7"/>
+				</div>
+			</div>
+			<div style="margin-top: 0.5em; text-align:center;">
+				<div class="button" onclick="setTimeout(resetRenderOptions, 0)">Reset</div>
+			</div>
+		</div>
+
+		<div id="colourControl" class="toolWrapper">
+		<h1>Palette</h1>
+			<div id="paletteTabs">
+				<div data-tab="Offset">
+					<table>
+						<tr>
+							<td>Master</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterOffset" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="masterOffsetText" class="colourText" tabindex="8"/></td>
+						</tr>
+						<tr>
+							<td>Red</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="redOffset" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="redOffsetText" class="colourText" tabindex="9"/></td>
+						</tr>
+						<tr>
+							<td>Green</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="greenOffset" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="greenOffsetText" class="colourText" tabindex="10"/></td>
+						</tr>
+						<tr>
+							<td>Blue</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="blueOffset" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="blueOffsetText" class="colourText" tabindex="11"/></td>
+						</tr>
+					</table>
+				</div>
+
+				<div data-tab="Stagger">
+					<table>
+						<tr>
+							<td>Master</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterStagger" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="masterStaggerText" class="colourText" tabindex="12"/></td>
+						</tr>
+						<tr>
+							<td>Red</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="redStagger" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="redStaggerText" class="colourText" tabindex="13"/></td>
+						</tr>
+						<tr>
+							<td>Green</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="greenStagger" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="greenStaggerText" class="colourText" tabindex="15"/></td>
+						</tr>
+						<tr>
+							<td>Blue</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="blueStagger" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="blueStaggerText" class="colourText" tabindex="16"/></td>
+						</tr>
+					</table>
+				</div>
+				<div data-tab="Period">
+					<table>
+						<tr>
+							<td>Red</td>
+							<td><input type="range" step="1" min="1" max="10" value="1" id="redPeriod" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="redPeriodText" class="colourText" tabindex="17"/></td>
+						</tr>
+						<tr>
+							<td>Green</td>
+							<td><input type="range" step="1" min="1" max="10" value="1" id="greenPeriod" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="greenPeriodText" class="colourText" tabindex="18"/></td>
+						</tr>
+						<tr>
+							<td>Blue</td>
+							<td><input type="range" step="1" min="1" max="10" value="1" id="bluePeriod" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="bluePeriodText" class="colourText" tabindex="19"/></td>
+						</tr>
+					</table>
+				</div>
+			</div>
+
+		</div>
+		<div id="exports" class="toolWrapper">
+			<div class="button" onclick="saveLocation();">Save Parameters</div>
+			<div class="button" onclick="exportImage()">Download Image</div>
+			<div class="button" onclick="exportManyland()">Manyland Code</div>
+		</div>
+	</div>
+	<div id="leftColumn">
+		<div id="savedWrapper">
+			<h1>Saved Renderings</h1>
+			<div id="savedRenderings"></div>
+		</div>
+		<div id="canvasWrapper"></div>
+	</div>
+	<div id="popupWrapper"></div>
+	<div id="temeplateWrapper" style="display:none">
+		<div id="manylandExportTemplate">
+			<h2>Manyland Changer Export</h2>
+			<p>Do you play <a target="_blank" href="http://manyland.com">Manyland</a>?  It's a fun
+			sandbox game where you can explore, create, share, talk and otherwise interact
+			with other players from around the world. If you've never played it, I highly
+			recommend trying it out.</p>
+			<div class="compatiblePaletteText">
+				<p> The code here can be used with a changer available in the Manyland area 
+				&quot;<a target="_blank" href="http://manyland.com/mandelbrotimport">Mandelbrot Import</a>&quot;
+				to recreate the images that you render here as creations in Manyland.</p>
+
+				<p>To use it is simple:</p>
+				<ol>
+					<li>Edit the object that you want to render the image on (e.g. a &quot;very big thing&quot;)</li>
+					<li>Hit shift-i to open the information box, and delete any text that's there</li>
+					<li>Copy the text in the box below, and paste it into the information box</li>
+					<li>Hit "ok" to close the information box, and save the creation</li>
+				</ol>
+				<div class="codeBox"></div>
+
+				<p>Once you've completed that, you can drag your creation on to the changer and
+				see the image that is rendered here.</p>
+
+				<p>Note that if you're using a &quot;big thing&quot; or &quot;very big
+				thing&quot;, you should fill the image, as changers read their size as the area
+				of the content, rather than the full size of the canvas.</p>
+
+				<p>For further information, see the message board in the
+				<a target="_blank" href="http://manyland.com/mandelbrotimport">Mandelbrot Import</a> area.</p>
+			</div>
+			<div class="incompatiblePaletteText" style="display:none">
+				<p>Unfortunately, Manyland uses a palette of only 54 colours (plus black), meaning this image is not compatible.
+				If you'd still like to export it, you'll need to reduce your palette size to 54
+				and try again.
+			</div>
+		</div>
+
+		<div id="downloadImageTemplate">
+			<h2>Download image</h2>
+			<div class="previewWrapper"></div>
+			<div class="downloadImageForm">
+				<p>Please choose the pixel width and height of the image you want to download.</p>
+				<div>
+					<span class="fieldLabel">Width:</span>
+					<input type="number" name="imageWidth"></input>
+				</div>
+				<div>
+					<span class="fieldLabel">Height:</span>
+					<input type="number" name="imageHeight"></input>
+				</div>
+			</div>
+		</div>
+
+		<div id="introTemplate">
+			<h2>The Mandelbrot Explorer</h2>
+			<p>The purpose of this application is to let you explore the Mandelbrot Set in it's full glory, and allow you to play with the colours used to bring it to it's full beauty.</p>
+			<p>Here's a short hotlist of how you can interact directly with the image:</p>
+			<ul>
+				<li><strong>The mousewheel</strong> zooms in and out</li>
+				<li><strong>A left click</strong> will center on the point you clicked.</li>
+				<li><strong>left click and drag</strong> to move your viewpoint</li>
+			</ul>
+		</div>
+	</div>
+</body>
+</html>

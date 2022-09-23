@@ -1,0 +1,119 @@
+<style type="text/css">
+.slider{
+	border-radius: 1000cm; /* stupid css lacking an elegant way for dynamic circluar ends */
+	position: relative;
+	border: 1px solid;
+	/*box-shadow: rgb(0 0 0 / 50%) -2px -2px 2px 2px inset, rgb(255 255 255 / 60%) 2px 2px 2px 2px inset;*/
+}
+
+.slider > div{
+	border: inherit;
+	display:inline-block;
+	position: absolute;
+	background-color: inherit;
+	border-radius: inherit;
+	box-shadow: inherit;
+	height: 5mm;
+	width: 5mm;
+	top: -50%;
+
+	/* make it unselectable */
+	-moz-user-select: -moz-none;
+	-khtml-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+	user-select: none;
+}
+</style>
+<script type="text/javascript">
+function buildSlider(element, config){
+	var boundingBox = element.getBoundingClientRect();
+	var n;
+
+	// let's make sure all of the necessary parameters are in place
+	var defaults = {
+		min : 0,
+		max : 100,
+		step : 0,
+		values : {i : 0},
+		reversible: false,
+		bevel : true
+		
+	};
+	if(config == undefined) config = {};
+	for(n in defaults){
+		if(config[n] == undefined){
+			config[n] = defaults[n];
+		}
+	}
+	config.step = Math.abs(config.step); // <-- idiot proofing
+
+
+	// now we can add style and events
+	element.classList.add('slider');
+
+	for(idx in config.values){
+		var widget = document.createElement('div');
+		element.appendChild(widget);
+
+		// center it vertically
+		var halfHeight = boundingBox.height / 2;
+		widget.style.marginTop = -(widget.getBoundingClientRect().height / 2 + 1) + 'px';
+		widget.style.top = halfHeight + 'px';
+
+		// initialize each handle
+		(function(component, idx){
+
+			// set the initial position
+			var xOffset = component.getBoundingClientRect().width >> 1;
+			component.style.left = (boundingBox.width * (config.values[idx] - config.min) / (config.max - config.min) - xOffset) + 'px';
+
+			// add events
+			component.onmousedown = function(){
+				document.onmousemove = function(e){
+					var x, value;
+					x = e.clientX - boundingBox.left;
+
+					// make sure we're within the range of the widget
+					x = x < 0 ? 0 : (x > boundingBox.width ? boundingBox.width : x);
+					value = x / boundingBox.width * (config.max - config.min) + config.min;
+
+					if(config.step > 0){
+						// if we have a step value, snap to that
+						value = Math.round(value / config.step) * config.step;
+						x = boundingBox.width * (value - config.min) / (config.max - config.min);
+					}
+					
+					config.values[idx] = value;
+					component.style.left = (x - xOffset) + 'px';
+//							var e = new Event('change')
+				}
+				document.onmouseup = function(){
+					document.onmousemove = null;
+					document.onmouseup = null;
+					var e = new Event('mouseup');
+					e.sliderValues = JSON.parse(JSON.stringify(config.values));
+					element.dispatchEvent(e);
+				}
+			}
+		})(widget, idx);
+
+	}
+
+}
+</script>
+<script type="text/javascript">
+window.onload = function(){
+	buildSlider(document.getElementById('example'), {min: -50, max : 50, step : 5, values: {a : -25, b : 25}})
+	document.getElementById('example').onmouseup = function(e){
+		console.log(JSON.stringify(e.sliderValues));
+	}
+};
+</script>
+</head>
+<body style="padding: 2em">
+<div>
+<div id="example" style="width: 10em; height: 1em; background-color:#FED; display: inline-block; margin-left:3cm"></div>
+</div>
+</body>
+</html>

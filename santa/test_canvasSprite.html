@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script type="text/javascript" src="jquery.min.js"></script>
+	<script type="text/javascript" src="canvasSprite.js"></script>
+	<script type="text/javascript">
+		var context, set, sprite;
+		$(document).ready(function(){
+			context = $('#gameCanvas').attr({'width': '400px', 'height': '400px'})[0].getContext('2d');
+			//context = document.getElementById('gameCanvas').getContext('2d');
+			set = new spriteSet({
+				"image" : "SantaAndReindeer.png",
+				"frameWidth" : 60,
+				"frameHeight" : 48,
+				"centerx" : 60,
+				"centery" : 24,
+				"frames" : {
+					"deer1" : { "x" : 0, "y" : 0 },
+					"deer2" : { "x" : 1, "y" : 0 },
+					"deer3" : { "x" : 2, "y" : 0 },
+					"deer4" : { "x" : 3, "y" : 0 },
+					"deer5" : { "x" : 0, "y" : 1 },
+					"deer6" : { "x" : 1, "y" : 1 },
+					"deer7" : { "x" : 2, "y" : 1 },
+					"deer8" : { "x" : 3, "y" : 1 },
+					"santa" : { "x" : 4, "y" : 0 , "centerx" : 20}
+				},
+				"sequences" : {
+					"walk" : {
+						"frames" : ["deer1","deer2","deer3","deer4","deer5","deer6","deer7","deer8"]
+					}
+				}
+			}, function(){
+				var ang = .2;
+				sprite = new cSprite(set);
+				sprite.position = {x : 20, y : 20};
+				sprite.draw(context);
+
+				sprite.position = {x : 100, y : 100};
+				sprite.startSequence('walk');
+
+
+				santa = new cSprite(set);
+				santa.setFrame('santa');
+				santa.position = {x : 160, y : 100};
+				setInterval(function(){
+					context.clearRect(0, 0, $('#gameCanvas').width(), $('#gameCanvas').height());
+					/*
+					sprite.angle += .1;
+					sprite.scale = 1 + (0.5 * Math.sin(sprite.angle));
+					*/
+					//sprite.position.x += 4;
+					sprite.doSequenceStep();
+					sprite.draw(context);
+
+					santa.rotate(Math.cos(ang += .2) / 40);
+					santa.draw(context);
+				}, 50);
+			});
+		});
+	</script>
+</head>
+<body>
+	<canvas id="gameCanvas" width="200px" height="200px" style="border: 1px solid;"></canvas>
+	<div id="debug"></div>
+</body>
+</html>

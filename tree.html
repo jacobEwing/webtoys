@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+        <style type="text/css">
+
+		html, body{
+			width: 100%;
+			height: 100%;
+			display: flex;
+			flex-direction: row;
+			align-items: stretch;
+			overflow: hidden;
+		}
+		
+		* {
+			margin: 0;
+			padding: 0;
+		}
+		body > div{
+			margin: 2mm;
+			border: 1px solid #aaa;
+			border-radius: 2mm;
+		}
+
+		ul {
+			padding: 0;
+			list-style-type: none;
+		}
+
+		li{
+			margin-top: 2mm;
+			margin-bottom: 3mm;
+		}
+
+		#canvasWrapper {
+			flex: 1;
+			overflow: hidden;
+			box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+		}
+
+		#toolWrapper {
+			padding: 2mm;
+			overflow: auto;
+			box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+		}
+
+		#toolWrapper > div{
+			background-color: #fff;
+		}
+
+		#templateWrapper {
+			display : none;
+		}
+
+		div.branchControl{
+			/*border: 1px solid;*/
+			border-radius : 1mm;
+			margin: 1mm 0;
+			padding: 1mm;
+			box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+		}
+
+		div.branchControl > h1{
+			font-size: 5mm;
+			color : #888;
+			margin: 0;
+			padding: 0;
+			font-family: sans-serif;
+			border-bottom: 1px dotted #aaa;
+		}
+
+		#mainControl{
+		}
+	</style>
+
+<script>
+	var Branch = function(){
+		this.length = 8;
+		this.angle = 0;
+		this.offset = 1;
+		this.element = null;
+	}
+
+	var ctx, branchangle2;
+	var branches = [], maxDepth = 6, rotations = 1, baseRotation = 0, thickTrunk = 0, canvas, startPoint, canvasWrapper, scale = 10;
+
+	function buildCanvas(){
+		canvas = document.createElement('canvas');
+		canvas.width = canvasWrapper.offsetWidth;
+		canvas.height = canvasWrapper.offsetHeight;
+		canvasWrapper.appendChild(canvas);
+		ctx = canvas.getContext("2d");
+		ctx.lineCap = 'round';
+		startPoint = {
+			x : canvas.width >> 1,
+			y : canvas.height >> 1
+		};
+	}
+
+	window.onload = function(){
+		addBranch('Trunk');
+		addBranch('Branch 1');
+		branches[0].angle = -.5;
+		branches[1].angle = .5;
+
+		// build the canvas;
+		canvasWrapper = document.getElementById('canvasWrapper');
+		buildCanvas();
+
+		// other events
+		window.onresize = function(){
+			canvasWrapper.removeChild(canvas);
+			buildCanvas();
+			refresh();
+		}
+		// handle the general settings
+		var recursion = document.getElementById('recursion');
+		recursion.value = maxDepth;
+		recursion.oninput = function(){
+			maxDepth = 1 * this.value;
+			refresh();
+		}
+
+		var rotwidget = document.getElementById('rotations');
+		rotwidget.value = rotations;
+		rotwidget.oninput = function(){
+			rotations = 1 * this.value;
+			refresh();
+		}
+
+		var toggleButton = document.getElementById('toggleBaseRot');
+		toggleButton.onclick = function(){
+			baseRotation = !baseRotation;
+			toggleButton.innerHTML = baseRotation ? 'On' : 'Off';
+			refresh();
+		}
+
+		document.getElementById('addbranch').onclick = function(){
+			addBranch('Branch ' + branches.length);
+			refresh();
+		}
+
+		document.getElementById('removebranch').onclick = function(){
+			if(branches.length > 1){
+				let remBranch = branches.pop();
+				remBranch.element.remove();
+				refresh();
+			}
+		}
+
+		var thicktrunkButton = document.getElementById('thicktrunk');
+		thicktrunkButton.onclick = function(){
+			thickTrunk = !thickTrunk;
+			if(thickTrunk){
+				thicktrunkButton.innerHTML = 'Thick trunk';
+			}else{
+				thicktrunkButton.innerHTML = 'Thin trunk';
+			}
+			refresh();
+		}
+
+		document.getElementById('scale').oninput = function(){
+			scale = 1 * this.value;
+			refresh();
+		}
+
+
+		refresh();
+	}
+
+	function refresh(){
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		let ang = -Math.PI / 2;
+		if(baseRotation){
+			ang += branches[0].angle;
+		}
+		let angi = 2 * Math.PI / rotations;
+		for(let n = 0; n < rotations; n++){
+			tree(startPoint.x, startPoint.y, ang,  branches[0].length, maxDepth);
+			ang += angi;
+		}
+	}
+
+	function tree(x, y, angle, length, depth){
+		let l = depth * scale / maxDepth;
+		let dx = Math.cos(angle) * l * length;
+		let dy = Math.sin(angle) * l * length;
+		let ang = Math.PI * depth / maxDepth;
+		let red = 64 + Math.floor(64 * Math.sin(ang));
+		let green = 64 + Math.floor(64 * Math.sin(ang + 1));
+		let blue = 64 + Math.floor(64 * Math.sin(ang + 2));
+		ctx.strokeStyle = 'rgb(' + red + ', ' + green + ', ' + blue + ')';
+		ctx.beginPath();
+		ctx.moveTo(x, y);
+		ctx.lineWidth = depth * (thickTrunk ? depth : 1);
+		ctx.lineTo(x + dx, y + dy);
+		ctx.stroke();
+
+		if(depth > 1){
+			for(let n in branches){
+				tree(x + dx * branches[n].offset, y + dy * branches[n].offset, angle + branches[n].angle, branches[n].length, depth - 1);
+			}
+
+		}
+		
+	}
+
+	function addBranch(name){
+		if(name == undefined){
+			name = "Branch " + branches.length;
+		}
+		var branch = new Branch();
+		branches[branches.length] = branch;
+
+		// Clone the template control interface
+		branch.element = document.getElementById('branchControlTemplate').cloneNode(1);
+		branch.element.removeAttribute('id');
+
+		// add the label
+		var label = document.createElement('h1');
+		label.innerHTML = name;
+		branch.element.prepend(label);
+		document.getElementById("toolWrapper").appendChild(branch.element);
+
+		// add event handlers for input elements
+
+		// angle
+		var angslider = branch.element.querySelector('.angleslider');
+		angslider.value = branch.angle;
+		angslider.oninput = function() {
+			branch.angle = 1 * this.value;
+			refresh();
+		}
+
+		// length
+		var lengthslider = branch.element.querySelector('.lengthslider');
+		lengthslider.value = branch.length;
+		lengthslider.oninput = function() {
+			branch.length = 1 * this.value;
+			refresh();
+		}
+
+		// offset
+		var offsetslider = branch.element.querySelector('.offsetslider');
+		offsetslider.value = branch.offset;
+		offsetslider.oninput = function() {
+			branch.offset = 1 * this.value;
+			refresh();
+		}
+
+
+	}
+</script>
+</head>
+<body>
+
+	<div id="toolWrapper" class="column">
+		<div class="branchControl" id="mainControl">
+			<h1>Options</h1>
+			<table>
+				<tr>
+					<td>Recursion:</td>
+					<td><input type="range" value=5 min="1" max="8" id="recursion"/></td>
+				</tr>
+				<tr>
+					<td>Rotations</td>
+					<td><input type="range" value=1 min="1" max="6" id="rotations"/></td>
+				</tr>
+				<tr>
+					<td>Scale</td>
+					<td><input type="range" value="10" min ="1" max="20" id="scale"/></td>
+				</tr>
+				<tr>
+					<td>Rotate trunk</td>
+					<td><button id="toggleBaseRot" style="width: 100%">Off</button></td>
+				</tr>
+				<tr>
+					<td>
+						<button id="addbranch" style="width: 100%">+Branch</button>
+					</td>
+					<td>
+						<button id="removebranch" style="width: 100%">-Branch</button>
+					</td>
+				</tr>
+				<tr>
+					<td colspan = 2>
+						<button id="thicktrunk" style="width: 100%">Thin trunk</button>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+	<div id="canvasWrapper" class="column"></div>
+
+	<div id="templateWrapper">
+		<div id="branchControlTemplate" class="branchControl">
+			<table>
+				<tr>
+					<td>Angle:</td>
+					<td><input type="range" class="angleslider" min="-3.14159" max="3.14159" value="0" step=".0002"/></td>
+				</tr>
+				<tr>
+					<td>Length:</td>
+					<td><input type="range" class="lengthslider" min="-20" max="20" value="0" step=".1"/></td>
+				</tr>
+				<tr>
+					<td>Offset:</td>
+					<td><input type="range" class="offsetslider" min="0" max="1" value="0" step=".01"/></td>
+				</tr>
+			</table>
+			<!--Length: <input type="range" class="angleslider" min="-2.094" max="2.094" value="0" step=".0002"/>-->
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		body {
+			margin: 0;
+		}
+	</style>
+	<script type="text/javascript" src="three.js"></script>
+	<script type="text/javascript">
+		window.onload = function(){
+			const scene = new THREE.Scene();
+			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+			const renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+			
+			const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+		//	const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+			const texture = new THREE.TextureLoader().load( "window.png" );
+			const material = new THREE.MeshBasicMaterial( { map: texture } );
+			const cube = new THREE.Mesh( geometry, material );
+			texture.wrapS = THREE.RepeatWrapping;
+			texture.wrapT = THREE.RepeatWrapping;
+//			texture.repeat.set( 4, 4 );
+
+			scene.add( cube );
+			camera.position.z = 5;
+			var ang = 0;
+			var animate = function(){
+				ang += .05;
+				cube.rotation.x += .01;
+				cube.rotation.y += .02;
+				cube.rotation.z += .03;
+				cube.position.x = .5 * Math.sin(ang);
+				cube.position.z = .5 * Math.cos(ang);
+				requestAnimationFrame( animate );
+				renderer.render( scene, camera );
+			}
+			animate();
+
+		}
+	</script>
+</head>
+<body>
+</body>
+</html>

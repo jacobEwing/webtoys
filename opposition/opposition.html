@@ -1,0 +1,109 @@
+<!DOCTYPE html5>
+<html>
+<head>
+	<style type="text/css">
+		html, body{
+			width: 100%;
+			height: 100%;
+			display: flex;
+			flex-direction: row;
+			align-items: stretch;
+			overflow: hidden;
+		}
+		
+		* {
+			margin: 0;
+			padding: 0;
+		}
+		body > div{
+			margin: 2mm;
+			border: 1px solid #aaa;
+			border-radius: 2mm;
+		}
+
+		ul {
+			padding: 0;
+			list-style-type: none;
+		}
+
+		li{
+			margin-top: 2mm;
+			margin-bottom: 3mm;
+		}
+
+		#canvasWrapper {
+			flex: 1;
+			overflow: hidden;
+		}
+		#toolWrapper {
+			width: 4cm;
+			padding: 2mm;
+		}
+	</style>
+	<script type="text/javascript" src="opposition.js"></script>
+	<script type="text/javascript">
+		window.onload = function(){
+			target = document.getElementById('canvasWrapper');
+			var game = new Game({
+				numParticles : 200,
+				target: target,
+				width: target.offsetWidth,
+				height: target.offsetHeight,
+				mouseRadius : 20
+			});
+
+			window.onresize = function(){
+				game.resetCanvas();
+			}
+
+			// add event handling for ui widgets
+			let radSlider = document.getElementById('mouseradius');
+			radSlider.value = Math.sqrt(game.mouseRadius);
+			radSlider.onchange = function(){
+				game.mouseRadius = this.value * this.value;
+			}
+
+			let repulsionSlider = document.getElementById('repulsion');
+			repulsionSlider.value = game.repulsion;
+			repulsionSlider.onchange = function(){
+				game.repulsion = 1 * this.value;
+			}
+
+			let numParticelsSlider = document.getElementById('numParticles');
+			numParticelsSlider.value = game.numParticles;
+			numParticelsSlider.onchange = function(){
+				game.setNumParticles(1 * this.value);
+			}
+
+			let rotationSlider = document.getElementById('rotation');
+			rotationSlider.value = game.rotation;
+			rotationSlider.onchange = function(){
+				game.rotation = 1 * this.value;
+			}
+		}
+	</script>
+</head>
+<body>
+	<div id="toolWrapper" class="column">
+		<ul>
+			<li>
+				Mouse Repulsion:<br/>
+				<input type="range" min="1" max="20" class="slider" id="mouseradius"></input>
+			</li>
+			<li>
+				Density:<br/>
+				<input type="range" min="1.0001" max="1.01" step=".0001" class="slider" id="repulsion"></input>
+			</li>
+			<li>
+				Quantity:<br/>
+				<input type="range" min="10" max="500" class="slider" id="numParticles"></input>
+			</li>
+			<li>
+				Rotation:<br/>
+				<input type="range" min="-8" max="8" step="1" class="slider" id="rotation"></input>
+			</li>
+		</ul>
+	</div>
+	<div id="canvasWrapper" class="column"></div>
+</body>
+</html>
