@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+
+
+		*, *::before, *::after {
+			box-sizing: border-box;
+		}
+		 input[type='range'] {
+			-webkit-appearance: none;
+			-moz-appearance: none;
+			appearance: none;
+		}
+		 input[type='range']:focus {
+			outline: none;
+		}
+		 input[type='range']::-webkit-slider-thumb {
+			-webkit-appearance: none;
+		}
+		 input[type='range']::-moz-range-thumb {
+			border: none;
+		}
+		.range-style {
+			width: 95%;
+			height: 15px;
+			background: #e0e0e0;
+			border-radius: 2px;
+			box-shadow: -1px -1px 2px white, 1px 1px 2px rgba(0, 0, 0, 0.5);
+		}
+		.range-style::-webkit-slider-runnable-track {
+			display: flex;
+			align-items: center;a(0, 0, 0, 0.5);
+		}
+		.range-style::-webkit-slider-thumb {
+			position: relative;
+			top: -50%;
+			width: 20px;
+			height: 20px;
+			background-color: #e0e0e0;
+			background-image: linear-gradient(-45deg, rgba(255, 255, 255, 0.8), transparent);
+			border-radius: 50%;
+			box-shadow: -1px -1px 2px white, 1px 1px 2px rgba(0, 0, 0, 0.3);
+		}
+		.range-style::-moz-range-track {
+			display: flex;
+			align-items: center;
+			height: 5px;
+			border-radius: 2px;
+			box-shadow: inset -2px -2px 2px white, inset 2px 2px 2px rgba(0, 0, 0, 0.5);
+		}
+		.range-style::-moz-range-thumb {
+			position: relative;
+			top: -50%;
+			width: 10px;
+			height: 10px;
+			background-color: #e0e0e0;
+			background-image: linear-gradient(-45deg, rgba(255, 255, 255, 0.8), transparent);
+			border-radius: 50%;
+			box-shadow: -1px -1px 2px white, 1px 1px 2px rgba(0, 0, 0, 0.3);
+		}
+		 
+
+
+
+		:root {
+			--gridclr: #ddd;
+			--gm1: 0px;
+			--gm2: 5px;
+			--gm3: 6px;
+			--gm4: 10px;
+		}
+
+		html, body {
+			margin: 0;
+			height: 100%;
+		}
+		body {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			flex-direction: column;
+			background-color: #e1e1e1;
+			opacity: 1;
+			background-size: 20px 20px;
+			background-image: repeating-linear-gradient(45deg, #d8d8d8 0, #d8d8d8 1px, transparent 0, transparent 50%);
+			font-family: sans-serif;
+		}
+
+		.container {
+			display: grid; 
+			grid-template-columns: repeat(4, 1fr); 
+			grid-template-rows: 1fr 1fr 1fr 1fr; 
+			gap: 0px 0px; 
+			grid-template-areas: 
+				"left left right right"
+				"left left right right"
+				"bottom bottom bottom bottom";
+			width: 640px;
+			height: 640px;
+		}
+		.left { grid-area: left; }
+		.top { grid-area: top; }
+		.right { grid-area: right; }
+		.bottom { grid-area: bottom; }
+
+		.container > div{
+			border: 1px solid #aaa;
+			margin: 2mm;
+			border-radius:1mm;
+			position: relative;
+			background-color: #f8f8f8;/*#e5e5f7;*/
+		}
+
+		.boxWrap{
+			width: 300px;
+			height: 300px;
+			overflow: hidden;
+		}
+
+		#imageWrapper > img{
+			width: 100%;
+			height: 100%;
+		}
+
+		#coordinateWrapper{
+			background-image: 
+				linear-gradient(transparent var(--gm1), transparent var(--gm2), var(--gridclr) var(--gm2), var(--gridclr) var(--gm3), transparent var(--gm3), transparent var(--gm4)),
+				linear-gradient(to right, transparent var(--gm1), transparent var(--gm2), var(--gridclr) var(--gm2), var(--gridclr) var(--gm3), transparent var(--gm3), transparent var(--gm4));
+			background-size: var(--gm4) var(--gm4);
+			overflow: hidden;
+		}
+
+		#toolWrapper{
+			background: none;
+			border: none;
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			grid-template-rows: 6cm;
+			gap: 0px 0px;
+			grid-template-areas: "red green blue";
+			width: 100%;
+			height: 100%;
+		}
+		#redAdjuster: { grid-area: red; }
+		#greenAdjuster: { grid-area: green; }
+		#blueAdjuster: { grid-area: blue; }
+
+		.colourAdjust {
+			display: flex;
+			align-items: center;
+			flex-direction: column;
+			height: 100%;
+			border-radius: 2mm;
+			background-color: #f8f8f8;
+			width: 95%;
+		}
+
+		.colourAdjust > h1 {
+			font-size: 16px;
+		}
+		/*
+		.colourAdjust > h2 {
+			font-size: 12px;
+			margin: 2mm 0 0;
+			padding: 0;
+			text-align: left;
+			width: 90%
+		}
+		*/
+		ul{
+			list-style-type: none;
+			padding: none;
+			margin: 0;
+			padding: 0;
+			width: 95%
+		}
+		li{
+			margin-top: 4mm;
+			list-style: none;
+		}
+
+		.positionMarker {
+			position: absolute;
+			width: 20px;
+			height: 20px;
+			background-image:
+				linear-gradient(transparent 0, transparent 9.5px, black 9.5px, black 10.5px, transparent 10.5px, transparent 20px),
+				linear-gradient(to right, transparent 0, transparent 9.5px, black 9.5px, black 10.5px, transparent 10.5px, transparent 20px),
+				radial-gradient(transparent -0.5px, transparent 4.5px, black 4.5px, black 5.5px, transparent 5.5px);
+			background-size: 20px 20px;
+		}
+
+		:is(.colourAdjust, .boxWrap){
+			box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+		}
+	</style>
+
+	<script type="text/javascript">
+		var canvas, context, centerPoint, options, canvasSize = 200, pointMarker, settingPosition = 0, palette,paletteSize = 256;
+		window.onload = function(){
+			options = {
+				colour : {},
+				parameters : {
+					range : 10,
+					n: canvasSize * Math.random(),
+					m: canvasSize * Math.random(),
+					scale : .2 + Math.random() / 5
+				}
+			};
+
+			for(let n of ['red', 'green', 'blue']){
+				options.colour[n] = {
+					offset : Math.PI * Math.random(),
+					shiftRange : Math.random() * 2 * Math.PI,
+					shiftAngCoefficient: Math.pow(2, Math.floor((Math.random() - .5) * 2)),
+				};
+			}
+
+			buildPalette();
+			addMouseInput();
+			updateWidgets();
+			addWidgetInput();
+			updateNM();
+			render();
+		}
+
+		function updateWidgets(){
+			for(let n of ['red', 'green', 'blue']){
+				for(m of['offset', 'shiftRange', 'shiftAngCoefficient']){
+					document.getElementById(n + m).value = options.colour[n][m];
+				}
+			}
+		}
+
+		function addWidgetInput(){
+			for(let n of ['red', 'green', 'blue']){
+				for(m of['offset', 'shiftRange', 'shiftAngCoefficient']){
+					let colour = n;
+					let parameter = m;
+					document.getElementById(n + m).onchange = function(){
+						options.colour[colour][parameter] = 1 * this.value;
+						buildPalette();
+						render();
+					};
+				}
+			}
+		}
+
+		function addMouseInput(){
+			pointMarker = document.createElement('div');
+			pointMarker.classList.add('positionMarker');
+			let mouseInput = document.getElementById('coordinateWrapper');
+			mouseInput.appendChild(pointMarker);
+
+			// add event handling
+			mouseInput.onmousedown = function(e){
+				settingPosition = 1;
+				handleMouseInput(e);
+			};
+
+			mouseInput.onmouseup = function(e){
+				settingPosition = 0;
+			}
+
+			mouseInput.onmousemove = function(e){
+				if(!settingPosition) return;
+				handleMouseInput(e);
+			}
+		}
+
+		function handleMouseInput(e){
+			let mouseInput = document.getElementById('coordinateWrapper');
+			let rect = mouseInput.getBoundingClientRect();
+			let x = e.clientX - rect.left;
+			let y = e.clientY - rect.top;
+			if(x == options.parameters.n && y == options.parameters.m) return;
+			updateNM(x, y);
+			render();
+		}
+
+		function updateNM(n, m){
+			// update the input for the (n, m) input values
+			let params = options.parameters;
+			if(n != undefined && m != undefined){
+				params.n = n;
+				params.m = m;
+			}
+			pointMarker.style.left = (params.n - (pointMarker.offsetWidth >> 1))  + 'px';
+			pointMarker.style.top = (params.m - (pointMarker.offsetHeight >> 1)) + 'px';
+		}
+
+		function render(){
+			let wrapper = document.getElementById('imageWrapper');
+			wrapper.innerHTML = '';
+			buildContent();
+			drawImage();
+			var image = document.createElement('img');
+			image.src = canvas.toDataURL();
+			wrapper.appendChild(image);
+		}
+
+		function buildContent(){
+			canvas = document.createElement('canvas');
+			canvas.width = canvas.height = canvasSize;
+			context = canvas.getContext("2d");
+			centerPoint = { x : canvas.width >> 1, y : canvas.height >> 1 };
+		}
+
+		function putPixel(x, y, colour){
+			context.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
+			context.fillRect(x, y, 1, 1);
+		}
+
+		function drawImage() {
+			// if I ever want to have distinct length and width for the output, then
+			// I need to split rangeMin and posInc into x and y equivalents
+			var rangeMin = options.parameters.scale * -centerPoint.x / canvasSize;
+			var posInc = options.parameters.scale * 1 / canvasSize;
+
+			var a = options.parameters.n * rangeMin;
+			var ai = options.parameters.n * posInc;
+
+			var c = options.parameters.m * rangeMin;
+			var ci = options.parameters.m * posInc;
+
+			var b, bi = options.parameters.n * posInc;
+			var bStart = options.parameters.n * rangeMin;
+
+			var d, di = options.parameters.m * posInc;
+			var dStart = options.parameters.m * rangeMin;
+
+			var aSine = Math.sin(a);
+			var cSine = Math.sin(c);
+
+			for(let x = 0; x < canvas.width; x++){
+				b = bStart;
+				d = dStart;
+				for(let y = 0; y < canvas.height; y++){
+
+					let value = Math.floor(paletteSize * (1 + Math.sin(aSine * Math.sin(d) - cSine * Math.sin(b))) / 2);
+
+					putPixel(x, y, palette[value]);
+					b += bi;
+					d += di;
+
+				}
+				a += ai;
+				c += ci;
+				aSine = Math.sin(a);
+				cSine = Math.sin(c);
+			}
+		}
+
+		function buildPalette(){
+			let ang = 0;
+			let angi = 2 * Math.PI / paletteSize;
+			palette = [];
+			for(let n = 0; n < paletteSize; n ++){
+				palette[n] = {};
+				for(let m in options.colour){
+					palette[n][m] = Math.floor(
+						128 + 127 * Math.sin(
+							ang 
+							+ options.colour[m].offset 
+							+ options.colour[m].shiftRange * Math.sin(
+								ang * options.colour[m].shiftAngCoefficient
+							)
+						)
+					);
+				}
+				ang += angi;
+			}
+		}
+
+	</script>
+</head>
+<body>
+	<h1>foo</h1>
+	<div class="container">
+		<div class="left boxWrap" id="imageWrapper"></div>
+		<div class="right boxWrap" id="coordinateWrapper"></div>
+		<div class="bottom" id="toolWrapper">
+			<div id="redAdjuster" class="colourAdjust">
+				<h1>Red</h1>
+				<ul>
+					<li>
+						Wave offset:<br/>
+						<input type="range" min="0" max="1" step=".01" class="range-style" id="redoffset"></input>
+					</li>
+					<li>
+						Ripple amplitude:<br/>
+						<input type="range" min="0" max="1" step=".01" class="range-style" id="redshiftRange"></input>
+					</li>
+					<li>
+						Ripple frequency:<br>
+						<input type="range" min="0" max="2" step=".01" class="range-style" id="redshiftAngCoefficient"></input>
+					</li>
+				</ul>
+			</div>
+			<div id="greenAdjuster" class="colourAdjust">
+				<h1>Green</h1>
+				<ul>
+					<li>
+						Wave offset:<br/>
+						<input type="range" min="0" max="1" step=".01" class="range-style" id="greenoffset"></input>
+					</li>
+					<li>
+						Ripple amplitude:<br/>
+						<input type="range" min="0" max="1" step=".01" class="range-style" id="greenshiftRange"></input>
+					</li>
+					<li>
+						Ripple frequency:<br>
+						<input type="range" min="0" max="2" step=".01" class="range-style" id="greenshiftAngCoefficient"></input>
+					</li>
+				</ul>
+			</div>
+			<div id="blueAdjuster" class="colourAdjust">
+				<h1>Blue</h1>
+				<ul>
+					<li>
+						Wave offset:<br/>
+						<input type="range" min="0" max="2" step=".01" class="range-style" id="blueoffset"></input>
+					</li>
+					<li>
+						Ripple amplitude:<br/>
+						<input type="range" min="0" max="2" step=".01" class="range-style" id="blueshiftRange"></input>
+					</li>
+					<li>
+						Ripple frequency:<br>
+						<input type="range" min="0" max="2" step=".01" class="range-style" id="blueshiftAngCoefficient"></input>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
