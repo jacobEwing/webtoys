@@ -63,6 +63,7 @@
 			--gm1: 0px;
 			--gm2: 1px;
 			--gm3: 6px;
+			--spacing: 3mm;
 		}
 
 		html, body {
@@ -85,12 +86,12 @@
 			display: grid;
 			grid-template-columns: repeat(4, 1fr);
 			grid-template-rows: repeat(4, .8fr);
-			gap: 0px 0px;
+			gap: var(--spacing);
 			grid-template-areas:
 				"left left right right"
 				"left left right right"
 				"mid mid mid mid"
-				"bottom bottom bottom bottom";
+				"wave wave wave other";
 			align-items: center;
 		}
 
@@ -99,12 +100,12 @@
 		.right { grid-area: right; }
 		.controls { grid-area: mid; }
 		.graph { 
-			grid-area: bottom;
+			grid-area: wave;
 			height: 100%;
 		}
+		.other{ grid-area: other; }
 
 		.container > div{
-			margin: 2mm;
 			border-radius:1mm;
 			position: relative;
 			background-color: #f8f8f8;/*#e5e5f7;*/
@@ -114,6 +115,15 @@
 			width: 300px;
 			height: 300px;
 			overflow: hidden;
+		}
+
+		#graphWrapper{
+			display: flex;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			justify-content: center;
+			align-items: center;
+			align-content: stretch;
 		}
 
 		#imageWrapper > img{
@@ -134,14 +144,14 @@
 			border: none;
 			display: grid;
 			grid-template-columns: repeat(3, 1fr);
-			grid-template-rows: 5cm;
-			gap: 0px 0px;
+			grid-template-rows: max-content;
 			grid-template-areas: "red green blue";
 			width: 100%;
 			height: 100%;
+			gap: var(--spacing);
 		}
 		#redAdjuster: { grid-area: red; }
-		#greenAdjuster: { grid-area: green; }
+		#greenAdjuster{ grid-area: green; margin: 0 1mm;}
 		#blueAdjuster: { grid-area: blue; }
 
 		.colourAdjust {
@@ -151,7 +161,8 @@
 			height: 100%;
 			border-radius: 2mm;
 			background-color: #f8f8f8;
-			width: 95%;
+			font-size: .9em;
+
 		}
 		body > h1 {
 			margin: 0;
@@ -191,9 +202,9 @@
 	</style>
 
 	<script type="text/javascript">
-		var canvas, context, centerPoint, options, canvasSize = 200, pointMarker, settingPosition = 0, palette, paletteSize = 256;
+		var canvas, context, centerPoint, options, canvasSize = 300, pointMarker, settingPosition = 0, palette, paletteSize = 256;
 		var sineTable = [];
-		window.onload = function(){
+		document.addEventListener("DOMContentLoaded", function () {
 			options = {
 				colour : {},
 				parameters : {
@@ -212,13 +223,13 @@
 				};
 			}
 
-			buildPalette();
 			addMouseInput();
 			updateWidgets();
 			addWidgetInput();
 			updateNM();
+			buildPalette();
 			render();
-		}
+		});
 
 		function updateWidgets(){
 			for(let n of ['red', 'green', 'blue']){
@@ -234,7 +245,7 @@
 					let colour = n;
 					let parameter = m;
 					document.getElementById(n + m).onchange = function(){
-						options.colour[colour][parameter] = 1 * this.value;
+						options.colour[colour][parameter] = -1 * this.value;
 						buildPalette();
 						render();
 					};
@@ -314,7 +325,7 @@
 			multiplying them by pi each time, I simply them ranges between zero and pi,
 			reducing that to c = sin(n * x) * sin(m * y) - sin(m * x) * sin(n * y);
 
-			a, b, c, and d are those multiples.  a = n * y, b = n * m, etc.  Instead of
+			a, b, c, and d are those multiples.  a = n * y, b = n * x, etc.  Instead of
 			doing the multiplication each time, they're assigned at the start to their
 			initial values for the start of the loop, and incremented by the appropriate
 			amount, defined as ai, bi, ci, and di.
@@ -378,7 +389,7 @@
 							ang 
 							+ options.colour[m].offset 
 							+ options.colour[m].shiftRange * Math.sin(
-								ang * options.colour[m].shiftAngCoefficient
+								(ang + options.colour[m].offset) * options.colour[m].shiftAngCoefficient
 							)
 						)
 					);
@@ -388,10 +399,55 @@
 			updatePaletteGraph();
 		}
 
-		function updatePaletteGraph(){
-			var target = document.getElementById('paletteGraph');
-			var cnvs = document.createElement('canvas');
-		}
+		var updatePaletteGraph = function(){
+			let cnvs = document.getElementById('paletteGraph');
+
+			cnvs.width = cnvs.parentElement.offsetWidth;
+			cnvs.height = cnvs.parentElement.offsetHeight;
+
+			let ctx = cnvs.getContext('2d');
+			ctx.fillStyle = '#000';
+			ctx.clearRect(0, 0, cnvs.width, cnvs.width - 1);
+
+			ctx.textAlign = 'center';
+			ctx.font = '15px sans-serif';
+			ctx.fillText('Palette Building Waves', cnvs.width >> 1, 16);
+			
+			let miny = cnvs.height / 4;
+			let maxy = cnvs.height - miny / 2;
+			let minx = cnvs.width / 8;
+			let maxx = cnvs.width - minx;
+
+			let xScale = (maxx - minx) / palette.length;
+			let yScale = (maxy - miny) / 256;
+			// plot the the colours
+			for(let c of ['red', 'green', 'blue']){
+				ctx.strokeStyle = c;
+				let i = 0;
+				let y = miny + yScale * palette[i][c];
+				let x = minx;
+				ctx.moveTo(x, y);
+				ctx.beginPath();
+				
+				for(i++; i < palette.length; i++){
+					x = minx + i * xScale;
+					y = miny + palette[i][c] * yScale;
+					console.log(x + ', ' + y);
+					ctx.lineTo(x, y);
+				}
+				ctx.stroke();
+			}
+
+			ctx.strokeStyle = 'black';
+			ctx.beginPath();
+			ctx.moveTo(minx, miny);
+			ctx.lineTo(minx, maxy);
+			ctx.lineTo(maxx, maxy);
+			ctx.stroke();
+
+
+
+		};
 
 	</script>
 </head>
@@ -406,7 +462,7 @@
 				<ul>
 					<li>
 						Wave offset:<br/>
-						<input type="range" min="0" max="3.14159" step=".01" class="range-style" id="redoffset"></input>
+						<input type="range" min="0" max="6.28318" step=".01" class="range-style" id="redoffset"></input>
 					</li>
 					<li>
 						Ripple amplitude:<br/>
@@ -414,7 +470,7 @@
 					</li>
 					<li>
 						Ripple frequency:<br>
-						<input type="range" min="0" max="2" step=".01" class="range-style" id="redshiftAngCoefficient"></input>
+						<input type="range" min="0" max="4" step=".01" class="range-style" id="redshiftAngCoefficient"></input>
 					</li>
 				</ul>
 			</div>
@@ -423,7 +479,7 @@
 				<ul>
 					<li>
 						Wave offset:<br/>
-						<input type="range" min="0" max="3.14159" step=".01" class="range-style" id="greenoffset"></input>
+						<input type="range" min="0" max="6.28318" step=".01" class="range-style" id="greenoffset"></input>
 					</li>
 					<li>
 						Ripple amplitude:<br/>
@@ -431,7 +487,7 @@
 					</li>
 					<li>
 						Ripple frequency:<br>
-						<input type="range" min="0" max="2" step=".01" class="range-style" id="greenshiftAngCoefficient"></input>
+						<input type="range" min="0" max="4" step=".01" class="range-style" id="greenshiftAngCoefficient"></input>
 					</li>
 				</ul>
 			</div>
@@ -440,7 +496,7 @@
 				<ul>
 					<li>
 						Wave offset:<br/>
-						<input type="range" min="0" max="3.14159" step=".01" class="range-style" id="blueoffset"></input>
+						<input type="range" min="0" max="6.28318" step=".01" class="range-style" id="blueoffset"></input>
 					</li>
 					<li>
 						Ripple amplitude:<br/>
@@ -448,12 +504,15 @@
 					</li>
 					<li>
 						Ripple frequency:<br>
-						<input type="range" min="0" max="2" step=".01" class="range-style" id="blueshiftAngCoefficient"></input>
+						<input type="range" min="0" max="4" step=".01" class="range-style" id="blueshiftAngCoefficient"></input>
 					</li>
 				</ul>
 			</div>
 		</div>
-		<div id="paletteGraph" class="graph">
+		<div class="graph" id="graphWrapper">
+			<canvas id="paletteGraph"></canvas>
+		</div>
+		<div class="other">
 		</div>
 	</div>
 </body>
