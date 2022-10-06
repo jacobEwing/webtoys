@@ -2,8 +2,6 @@
 <html>
 <head>
 	<style type="text/css">
-
-
 		*, *::before, *::after {
 			box-sizing: border-box;
 		}
@@ -59,16 +57,12 @@
 			border-radius: 50%;
 			box-shadow: -1px -1px 2px white, 1px 1px 2px rgba(0, 0, 0, 0.3);
 		}
-		 
-
-
 
 		:root {
 			--gridclr: #ddd;
 			--gm1: 0px;
-			--gm2: 5px;
+			--gm2: 1px;
 			--gm3: 6px;
-			--gm4: 10px;
 		}
 
 		html, body {
@@ -88,24 +82,28 @@
 		}
 
 		.container {
-			display: grid; 
-			grid-template-columns: repeat(4, 1fr); 
-			grid-template-rows: 1fr 1fr 1fr 1fr; 
-			gap: 0px 0px; 
-			grid-template-areas: 
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			grid-template-rows: repeat(4, .8fr);
+			gap: 0px 0px;
+			grid-template-areas:
 				"left left right right"
 				"left left right right"
+				"mid mid mid mid"
 				"bottom bottom bottom bottom";
-			width: 640px;
-			height: 640px;
+			align-items: center;
 		}
+
 		.left { grid-area: left; }
 		.top { grid-area: top; }
 		.right { grid-area: right; }
-		.bottom { grid-area: bottom; }
+		.controls { grid-area: mid; }
+		.graph { 
+			grid-area: bottom;
+			height: 100%;
+		}
 
 		.container > div{
-			border: 1px solid #aaa;
 			margin: 2mm;
 			border-radius:1mm;
 			position: relative;
@@ -125,9 +123,9 @@
 
 		#coordinateWrapper{
 			background-image: 
-				linear-gradient(transparent var(--gm1), transparent var(--gm2), var(--gridclr) var(--gm2), var(--gridclr) var(--gm3), transparent var(--gm3), transparent var(--gm4)),
-				linear-gradient(to right, transparent var(--gm1), transparent var(--gm2), var(--gridclr) var(--gm2), var(--gridclr) var(--gm3), transparent var(--gm3), transparent var(--gm4));
-			background-size: var(--gm4) var(--gm4);
+				linear-gradient(var(--gridclr) var(--gm1), var(--gridclr) var(--gm2), transparent var(--gm2), transparent var(--gm3)),
+				linear-gradient(to right, var(--gridclr) var(--gm1), var(--gridclr) var(--gm2), transparent var(--gm2), transparent var(--gm3));
+			background-size: var(--gm3) var(--gm3);
 			overflow: hidden;
 		}
 
@@ -136,7 +134,7 @@
 			border: none;
 			display: grid;
 			grid-template-columns: repeat(3, 1fr);
-			grid-template-rows: 6cm;
+			grid-template-rows: 5cm;
 			gap: 0px 0px;
 			grid-template-areas: "red green blue";
 			width: 100%;
@@ -155,19 +153,15 @@
 			background-color: #f8f8f8;
 			width: 95%;
 		}
+		body > h1 {
+			margin: 0;
+			padding: 0;
+		}
 
 		.colourAdjust > h1 {
 			font-size: 16px;
 		}
-		/*
-		.colourAdjust > h2 {
-			font-size: 12px;
-			margin: 2mm 0 0;
-			padding: 0;
-			text-align: left;
-			width: 90%
-		}
-		*/
+
 		ul{
 			list-style-type: none;
 			padding: none;
@@ -176,7 +170,7 @@
 			width: 95%
 		}
 		li{
-			margin-top: 4mm;
+			margin-top: 1mm;
 			list-style: none;
 		}
 
@@ -191,13 +185,14 @@
 			background-size: 20px 20px;
 		}
 
-		:is(.colourAdjust, .boxWrap){
+		:is(.colourAdjust, .boxWrap, .graph){
 			box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
 		}
 	</style>
 
 	<script type="text/javascript">
-		var canvas, context, centerPoint, options, canvasSize = 200, pointMarker, settingPosition = 0, palette,paletteSize = 256;
+		var canvas, context, centerPoint, options, canvasSize = 200, pointMarker, settingPosition = 0, palette, paletteSize = 256;
+		var sineTable = [];
 		window.onload = function(){
 			options = {
 				colour : {},
@@ -307,16 +302,25 @@
 			centerPoint = { x : canvas.width >> 1, y : canvas.height >> 1 };
 		}
 
-		function putPixel(x, y, colour){
-			context.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
-			context.fillRect(x, y, 1, 1);
-		}
-
 		function drawImage() {
-			// if I ever want to have distinct length and width for the output, then
-			// I need to split rangeMin and posInc into x and y equivalents
+			/*
+			This function may be hard to follow as I've optimized it to the best of my
+			abillity.  The short of it is that each pixel is getting a distinct colour
+			based on the function:
+
+			c = sin(n * pi * x) * sin(m * pi * y) - sin(m * pi * x) * sin(n * pi * y)
+
+			In the above function, n and m would have ranges from 0 to one, so instead of
+			multiplying them by pi each time, I simply them ranges between zero and pi,
+			reducing that to c = sin(n * x) * sin(m * y) - sin(m * x) * sin(n * y);
+
+			a, b, c, and d are those multiples.  a = n * y, b = n * m, etc.  Instead of
+			doing the multiplication each time, they're assigned at the start to their
+			initial values for the start of the loop, and incremented by the appropriate
+			amount, defined as ai, bi, ci, and di.
+			*/
 			var rangeMin = options.parameters.scale * -centerPoint.x / canvasSize;
-			var posInc = options.parameters.scale * 1 / canvasSize;
+			var posInc = options.parameters.scale / canvasSize;
 
 			var a = options.parameters.n * rangeMin;
 			var ai = options.parameters.n * posInc;
@@ -333,14 +337,24 @@
 			var aSine = Math.sin(a);
 			var cSine = Math.sin(c);
 
-			for(let x = 0; x < canvas.width; x++){
+			for(let x = 0; x < canvas.width >> 1; x++){
 				b = bStart;
 				d = dStart;
-				for(let y = 0; y < canvas.height; y++){
+				for(let y = 0; y <= x; y++){
 
-					let value = Math.floor(paletteSize * (1 + Math.sin(aSine * Math.sin(d) - cSine * Math.sin(b))) / 2);
+					let colour = palette[Math.floor(paletteSize * (1 + Math.sin(aSine * Math.sin(d) - cSine * Math.sin(b))) / 2)];
+					context.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
 
-					putPixel(x, y, palette[value]);
+					// it has 8-way symmetry, so we can cut the calculation by a factor of 8:
+					context.fillRect(x, y, 1, 1);
+					context.fillRect(canvas.width - x, y, 1, 1);
+					context.fillRect(x, canvas.height - y, 1, 1);
+					context.fillRect(canvas.width - x, canvas.height - y, 1, 1);
+					context.fillRect(y, x, 1, 1);
+					context.fillRect(canvas.width - y, x, 1, 1);
+					context.fillRect(y, canvas.height - x, 1, 1);
+					context.fillRect(canvas.width - y, canvas.height - x, 1, 1);
+
 					b += bi;
 					d += di;
 
@@ -371,26 +385,32 @@
 				}
 				ang += angi;
 			}
+			updatePaletteGraph();
+		}
+
+		function updatePaletteGraph(){
+			var target = document.getElementById('paletteGraph');
+			var cnvs = document.createElement('canvas');
 		}
 
 	</script>
 </head>
 <body>
-	<h1>foo</h1>
+	<h1>Chladni Patterns</h1>
 	<div class="container">
 		<div class="left boxWrap" id="imageWrapper"></div>
 		<div class="right boxWrap" id="coordinateWrapper"></div>
-		<div class="bottom" id="toolWrapper">
+		<div class="controls" id="toolWrapper">
 			<div id="redAdjuster" class="colourAdjust">
 				<h1>Red</h1>
 				<ul>
 					<li>
 						Wave offset:<br/>
-						<input type="range" min="0" max="1" step=".01" class="range-style" id="redoffset"></input>
+						<input type="range" min="0" max="3.14159" step=".01" class="range-style" id="redoffset"></input>
 					</li>
 					<li>
 						Ripple amplitude:<br/>
-						<input type="range" min="0" max="1" step=".01" class="range-style" id="redshiftRange"></input>
+						<input type="range" min="0" max="6.28318" step=".01" class="range-style" id="redshiftRange"></input>
 					</li>
 					<li>
 						Ripple frequency:<br>
@@ -403,11 +423,11 @@
 				<ul>
 					<li>
 						Wave offset:<br/>
-						<input type="range" min="0" max="1" step=".01" class="range-style" id="greenoffset"></input>
+						<input type="range" min="0" max="3.14159" step=".01" class="range-style" id="greenoffset"></input>
 					</li>
 					<li>
 						Ripple amplitude:<br/>
-						<input type="range" min="0" max="1" step=".01" class="range-style" id="greenshiftRange"></input>
+						<input type="range" min="0" max="6.28318" step=".01" class="range-style" id="greenshiftRange"></input>
 					</li>
 					<li>
 						Ripple frequency:<br>
@@ -420,11 +440,11 @@
 				<ul>
 					<li>
 						Wave offset:<br/>
-						<input type="range" min="0" max="2" step=".01" class="range-style" id="blueoffset"></input>
+						<input type="range" min="0" max="3.14159" step=".01" class="range-style" id="blueoffset"></input>
 					</li>
 					<li>
 						Ripple amplitude:<br/>
-						<input type="range" min="0" max="2" step=".01" class="range-style" id="blueshiftRange"></input>
+						<input type="range" min="0" max="6.28318" step=".01" class="range-style" id="blueshiftRange"></input>
 					</li>
 					<li>
 						Ripple frequency:<br>
@@ -432,6 +452,8 @@
 					</li>
 				</ul>
 			</div>
+		</div>
+		<div id="paletteGraph" class="graph">
 		</div>
 	</div>
 </body>
