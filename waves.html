@@ -337,12 +337,12 @@
 			var aSine = Math.sin(a);
 			var cSine = Math.sin(c);
 
-			for(let x = 0; x < canvas.width >> 1; x++){
+			for(let x = 0; x <= canvas.width >> 1; x++){
 				b = bStart;
 				d = dStart;
 				for(let y = 0; y <= x; y++){
-
-					let colour = palette[Math.floor(paletteSize * (1 + Math.sin(aSine * Math.sin(d) - cSine * Math.sin(b))) / 2)];
+					let v = aSine * Math.sin(d) - cSine * Math.sin(b); // <-- range of -2 to 2
+					let colour = palette[Math.floor(paletteSize * (2 + v) / 4)];
 					context.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
 
 					// it has 8-way symmetry, so we can cut the calculation by a factor of 8:
