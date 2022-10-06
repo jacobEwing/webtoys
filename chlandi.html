@@ -33,6 +33,7 @@
 			background: #e0e0e0;
 			border-radius: 2px;
 			box-shadow: -1px -1px 2px white, 1px 1px 2px rgba(0, 0, 0, 0.5);
+			margin-bottom: 3mm;
 		}
 		.range-style::-webkit-slider-runnable-track {
 			display: flex;
@@ -170,8 +171,9 @@
 			padding: 0;
 		}
 
-		.colourAdjust > h1 {
+		h2 {
 			font-size: 16px;
+			margin: 1mm 0;
 		}
 
 		ul{
@@ -182,7 +184,6 @@
 			width: 95%
 		}
 		li{
-			margin-top: 1mm;
 			list-style: none;
 		}
 
@@ -190,11 +191,16 @@
 			border: none;
 			padding: 2mm;
 			margin: 1mm;
-			min-width: 90%;
 			box-shadow: rgba(0, 0, 0, 0.16) 0px 3px 6px, rgba(0, 0, 0, 0.23) 0px 3px 6px;
 		}
+
+		.other > button{
+			min-width: 90%;
+		}
+
 		button:active{
-			box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+			/*box-shadow: rgba(50, 50, 93, 0.25) 0px 3px 6px -4px inset, rgba(0, 0, 0, 0.3) 0px 6px 6px 4px inset;*/
+			box-shadow: inset 0px 5px 8px 0px rgba(0,0,0,0.44);
 		}
 
 		.positionMarker {
@@ -285,6 +291,13 @@
 				buildPalette();
 				updateWidgets();
 				render();
+			}
+
+			for(b of document.getElementsByClassName('setresolution')){
+				b.onclick = function(){
+					canvasSize = this.dataset.value;
+					render();
+				}
 			}
 		}
 
@@ -497,7 +510,7 @@
 		<div class="right boxWrap" id="coordinateWrapper"></div>
 		<div class="controls" id="toolWrapper">
 			<div id="redAdjuster" class="colourAdjust">
-				<h1>Red</h1>
+				<h2>Red</h2>
 				<ul>
 					<li>
 						Wave offset:<br/>
@@ -514,7 +527,7 @@
 				</ul>
 			</div>
 			<div id="greenAdjuster" class="colourAdjust">
-				<h1>Green</h1>
+				<h2>Green</h2>
 				<ul>
 					<li>
 						Wave offset:<br/>
@@ -531,7 +544,7 @@
 				</ul>
 			</div>
 			<div id="blueAdjuster" class="colourAdjust">
-				<h1>Blue</h1>
+				<h2>Blue</h2>
 				<ul>
 					<li>
 						Wave offset:<br/>
@@ -554,6 +567,12 @@
 		<div class="other">
 			<button id="randomPalette">Random Palette</button>
 			<button id="greyScale">Greyscale</button>
+			<span>Resolution:</span>
+			<div>
+				<button class="setresolution" data-value='100'>low</button>
+				<button class="setresolution" data-value='200'>med.</button>
+				<button class="setresolution" data-value='300'>hi.</button>
+			</div>
 		</div>
 	</div>
 </body>
