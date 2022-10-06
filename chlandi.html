@@ -2,6 +2,14 @@
 <html>
 <head>
 	<style type="text/css">
+		:root {
+			--gridclr: #ddd;
+			--gm1: 0px;
+			--gm2: 1px;
+			--gm3: 6px;
+			--spacing: 3mm;
+		}
+
 		*, *::before, *::after {
 			box-sizing: border-box;
 		}
@@ -58,14 +66,6 @@
 			box-shadow: -1px -1px 2px white, 1px 1px 2px rgba(0, 0, 0, 0.3);
 		}
 
-		:root {
-			--gridclr: #ddd;
-			--gm1: 0px;
-			--gm2: 1px;
-			--gm3: 6px;
-			--spacing: 3mm;
-		}
-
 		html, body {
 			margin: 0;
 			height: 100%;
@@ -99,16 +99,20 @@
 		.top { grid-area: top; }
 		.right { grid-area: right; }
 		.controls { grid-area: mid; }
-		.graph { 
-			grid-area: wave;
-			height: 100%;
+		.graph { grid-area: wave;}
+		.other{ grid-area: other; 
+			display: flex;
+			flex-direction: column;
+			flex-wrap: nowrap;
+			justify-content: center;
+			align-items: center;
 		}
-		.other{ grid-area: other; }
 
 		.container > div{
-			border-radius:1mm;
+			border-radius:2mm;
 			position: relative;
-			background-color: #f8f8f8;/*#e5e5f7;*/
+			background-color: #f8f8f8;
+			height: 100%;
 		}
 
 		.boxWrap{
@@ -123,7 +127,6 @@
 			flex-wrap: nowrap;
 			justify-content: center;
 			align-items: center;
-			align-content: stretch;
 		}
 
 		#imageWrapper > img{
@@ -146,8 +149,6 @@
 			grid-template-columns: repeat(3, 1fr);
 			grid-template-rows: max-content;
 			grid-template-areas: "red green blue";
-			width: 100%;
-			height: 100%;
 			gap: var(--spacing);
 		}
 		#redAdjuster: { grid-area: red; }
@@ -185,6 +186,17 @@
 			list-style: none;
 		}
 
+		button {
+			border: none;
+			padding: 2mm;
+			margin: 1mm;
+			min-width: 90%;
+			box-shadow: rgba(0, 0, 0, 0.16) 0px 3px 6px, rgba(0, 0, 0, 0.23) 0px 3px 6px;
+		}
+		button:active{
+			box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+		}
+
 		.positionMarker {
 			position: absolute;
 			width: 20px;
@@ -196,7 +208,7 @@
 			background-size: 20px 20px;
 		}
 
-		:is(.colourAdjust, .boxWrap, .graph){
+		:is(.colourAdjust, .boxWrap, .graph, .other){
 			box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
 		}
 	</style>
@@ -215,14 +227,7 @@
 				}
 			};
 
-			for(let n of ['red', 'green', 'blue']){
-				options.colour[n] = {
-					offset : Math.PI * Math.random(),
-					shiftRange : Math.random() * 2 * Math.PI,
-					shiftAngCoefficient: Math.pow(2, Math.floor((Math.random() - .5) * 2)),
-				};
-			}
-
+			randomPaletteConfig();
 			addMouseInput();
 			updateWidgets();
 			addWidgetInput();
@@ -230,6 +235,16 @@
 			buildPalette();
 			render();
 		});
+
+		function randomPaletteConfig(){
+			for(let n of ['red', 'green', 'blue']){
+				options.colour[n] = {
+					offset : 2 * Math.PI * Math.random(),
+					shiftRange : 2 * Math.PI * Math.random(),
+					shiftAngCoefficient: Math.random() * 4,
+				};
+			}
+		}
 
 		function updateWidgets(){
 			for(let n of ['red', 'green', 'blue']){
@@ -250,6 +265,26 @@
 						render();
 					};
 				}
+			}
+
+			document.getElementById('randomPalette').onclick = function(){
+				randomPaletteConfig();
+				buildPalette();
+				updateWidgets();
+				render();
+			}
+
+			document.getElementById('greyScale').onclick = function(){
+				for(let n of ['red', 'green', 'blue']){
+					options.colour[n] = {
+						offset : 0,
+						shiftRange : 0,
+						shiftAngCoefficient: 0,
+					};
+				}
+				buildPalette();
+				updateWidgets();
+				render();
 			}
 		}
 
@@ -407,19 +442,23 @@
 
 			let ctx = cnvs.getContext('2d');
 			ctx.fillStyle = '#000';
+
+			// start anew
 			ctx.clearRect(0, 0, cnvs.width, cnvs.width - 1);
 
+			// add the label at the top
 			ctx.textAlign = 'center';
 			ctx.font = '15px sans-serif';
 			ctx.fillText('Palette Building Waves', cnvs.width >> 1, 16);
 			
-			let miny = cnvs.height / 4;
-			let maxy = cnvs.height - miny / 2;
-			let minx = cnvs.width / 8;
+			let miny = 24;
+			let maxy = cnvs.height - miny;
+			let minx = 24;
 			let maxx = cnvs.width - minx;
 
 			let xScale = (maxx - minx) / palette.length;
 			let yScale = (maxy - miny) / 256;
+
 			// plot the the colours
 			for(let c of ['red', 'green', 'blue']){
 				ctx.strokeStyle = c;
@@ -432,12 +471,12 @@
 				for(i++; i < palette.length; i++){
 					x = minx + i * xScale;
 					y = miny + palette[i][c] * yScale;
-					console.log(x + ', ' + y);
 					ctx.lineTo(x, y);
 				}
 				ctx.stroke();
 			}
 
+			// draw the graph edges
 			ctx.strokeStyle = 'black';
 			ctx.beginPath();
 			ctx.moveTo(minx, miny);
@@ -513,6 +552,8 @@
 			<canvas id="paletteGraph"></canvas>
 		</div>
 		<div class="other">
+			<button id="randomPalette">Random Palette</button>
+			<button id="greyScale">Greyscale</button>
 		</div>
 	</div>
 </body>
