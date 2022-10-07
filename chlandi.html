@@ -361,7 +361,7 @@
 			centerPoint = { x : canvas.width >> 1, y : canvas.height >> 1 };
 		}
 
-		function drawImage() {
+		function drawImage(toggle) {
 			/*
 			This function may be hard to follow as I've optimized it to the best of my
 			abillity.  The short of it is that each pixel is getting a distinct colour
@@ -399,20 +399,15 @@
 			for(let x = 0; x <= canvas.width >> 1; x++){
 				b = bStart;
 				d = dStart;
-				for(let y = 0; y <= x; y++){
+				for(let y = 0; y <= canvas.height >> 1; y++){
 					let v = aSine * Math.sin(d) - cSine * Math.sin(b); // <-- range of -2 to 2
 					let colour = palette[Math.floor(paletteSize * (2 + v) / 4)];
 					context.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
 
-					// it has 8-way symmetry, so we can cut the calculation by a factor of 8:
 					context.fillRect(x, y, 1, 1);
-					context.fillRect(canvas.width - x, y, 1, 1);
-					context.fillRect(x, canvas.height - y, 1, 1);
-					context.fillRect(canvas.width - x, canvas.height - y, 1, 1);
-					context.fillRect(y, x, 1, 1);
 					context.fillRect(canvas.width - y, x, 1, 1);
+					context.fillRect(canvas.width - x, canvas.height - y, 1, 1);
 					context.fillRect(y, canvas.height - x, 1, 1);
-					context.fillRect(canvas.width - y, canvas.height - x, 1, 1);
 
 					b += bi;
 					d += di;
