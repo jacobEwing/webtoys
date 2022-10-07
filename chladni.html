@@ -364,7 +364,7 @@
 			centerPoint = { x : canvas.width >> 1, y : canvas.height >> 1 };
 		}
 
-		function setPixel(x, y, colour, log) {
+		function putPixel(x, y, colour) {
 			const data = img.data;
 			const index = (y * img.width + x) * 4;
 			data[index + 0] = colour.red;
@@ -421,17 +421,17 @@
 					// into eight triangles, four of them are the rotation of this point, and the other
 					// are the reflection of those, with the depth inverted.
 
-					setPixel(x, y, colour);
-					setPixel(canvas.width - y, x, colour);
-					setPixel(canvas.width - x, canvas.height - y, colour);
-					setPixel(y, canvas.height - x, colour);
+					putPixel(x, y, colour);
+					putPixel(canvas.width - y, x, colour);
+					putPixel(canvas.width - x, canvas.height - y, colour);
+					putPixel(y, canvas.height - x, colour);
 
 					// we can cheat by simply flipping the colour - which represents depth
 					colour = palette[palette.length - 1 - colourIndex];
-					setPixel(y, x, colour);
-					setPixel(canvas.width - x, y, colour);
-					setPixel(canvas.width - y, canvas.height - x, colour);
-					setPixel(x, canvas.height - y, colour);
+					putPixel(y, x, colour);
+					putPixel(canvas.width - x, y, colour);
+					putPixel(canvas.width - y, canvas.height - x, colour);
+					putPixel(x, canvas.height - y, colour);
 
 					b += bi;
 					d += di;
