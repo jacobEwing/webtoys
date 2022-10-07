@@ -107,13 +107,13 @@
 			flex-wrap: nowrap;
 			justify-content: center;
 			align-items: center;
+			height: 100%;
 		}
 
 		.container > div{
 			border-radius:2mm;
 			position: relative;
 			background-color: #f8f8f8;
-			height: 100%;
 		}
 
 		.boxWrap{
@@ -220,7 +220,7 @@
 	</style>
 
 	<script type="text/javascript">
-		var canvas, img, context, centerPoint, options, canvasSize = 300, pointMarker, settingPosition = 0, palette, paletteSize = 256;
+		var canvas, img, context, centerPoint, options, canvasSize = 300, pointMarker, settingPosition = 0, palette, paletteSize = 1024;
 		var sineTable = [];
 		document.addEventListener("DOMContentLoaded", function () {
 			options = {
@@ -293,12 +293,19 @@
 				render();
 			}
 
-			for(b of document.getElementsByClassName('setresolution')){
-				b.onclick = function(){
-					canvasSize = this.dataset.value;
-					render();
+			document.getElementById('staggeredGrey').onclick = function(){
+				for(let n of ['red', 'green', 'blue']){
+					options.colour[n] = {
+						offset : 0,
+						shiftRange : Math.PI,
+						shiftAngCoefficient:4
+					};
 				}
+				buildPalette();
+				updateWidgets();
+				render();
 			}
+
 		}
 
 		function addMouseInput(){
@@ -346,16 +353,12 @@
 
 		function render(){
 			let wrapper = document.getElementById('imageWrapper');
-			wrapper.innerHTML = '';
 			buildContent();
 			drawImage();
-			var image = document.createElement('img');
-			image.src = canvas.toDataURL();
-			wrapper.appendChild(image);
 		}
 
 		function buildContent(){
-			canvas = document.createElement('canvas');
+			canvas = document.querySelector('#imageWrapper canvas');
 			canvas.width = canvas.height = canvasSize;
 			context = canvas.getContext("2d");
 			centerPoint = { x : canvas.width >> 1, y : canvas.height >> 1 };
@@ -520,7 +523,9 @@
 <body>
 	<h1>Chladni Patterns</h1>
 	<div class="container">
-		<div class="left boxWrap" id="imageWrapper"></div>
+		<div class="left boxWrap" id="imageWrapper">
+			<canvas></canvas>
+		</div>
 		<div class="right boxWrap" id="coordinateWrapper"></div>
 		<div class="controls" id="toolWrapper">
 			<div id="redAdjuster" class="colourAdjust">
@@ -581,12 +586,7 @@
 		<div class="other">
 			<button id="randomPalette">Random Palette</button>
 			<button id="greyScale">Greyscale</button>
-			<span>Resolution:</span>
-			<div>
-				<button class="setresolution" data-value='100'>low</button>
-				<button class="setresolution" data-value='200'>med.</button>
-				<button class="setresolution" data-value='300'>hi.</button>
-			</div>
+			<button id="staggeredGrey">Staggered Grey</button>
 		</div>
 	</div>
 </body>
