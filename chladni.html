@@ -220,7 +220,7 @@
 	</style>
 
 	<script type="text/javascript">
-		var canvas, context, centerPoint, options, canvasSize = 300, pointMarker, settingPosition = 0, palette, paletteSize = 256;
+		var canvas, img, context, centerPoint, options, canvasSize = 300, pointMarker, settingPosition = 0, palette, paletteSize = 256;
 		var sineTable = [];
 		document.addEventListener("DOMContentLoaded", function () {
 			options = {
@@ -361,7 +361,17 @@
 			centerPoint = { x : canvas.width >> 1, y : canvas.height >> 1 };
 		}
 
-		function drawImage(toggle) {
+		function setPixel(x, y, colour, log) {
+			const data = img.data;
+			const index = (y * img.width + x) * 4;
+			data[index + 0] = colour.red;
+			data[index + 1] = colour.green;
+			data[index + 2] = colour.blue;
+			data[index + 3] = 0xFF; // alpha
+		}
+
+
+		function drawImage() {
 			/*
 			This function may be hard to follow as I've optimized it to the best of my
 			abillity.  The short of it is that each pixel is getting a distinct colour
@@ -378,6 +388,7 @@
 			initial values for the start of the loop, and incremented by the appropriate
 			amount, defined as ai, bi, ci, and di.
 			*/
+			img = new ImageData(canvas.width, canvas.height)
 			var rangeMin = options.parameters.scale * -centerPoint.x / canvasSize;
 			var posInc = options.parameters.scale / canvasSize;
 
@@ -395,19 +406,29 @@
 
 			var aSine = Math.sin(a);
 			var cSine = Math.sin(c);
-
 			for(let x = 0; x <= canvas.width >> 1; x++){
 				b = bStart;
 				d = dStart;
-				for(let y = 0; y <= canvas.height >> 1; y++){
+				for(let y = 0; y <= x; y++){
 					let v = aSine * Math.sin(d) - cSine * Math.sin(b); // <-- range of -2 to 2
-					let colour = palette[Math.floor(paletteSize * (2 + v) / 4)];
-					context.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
+					let colourIndex = Math.floor(paletteSize * (2 + v) / 4);
+					let colour = palette[colourIndex];
 
-					context.fillRect(x, y, 1, 1);
-					context.fillRect(canvas.width - y, x, 1, 1);
-					context.fillRect(canvas.width - x, canvas.height - y, 1, 1);
-					context.fillRect(y, canvas.height - x, 1, 1);
+					// We only need to calculate the colour once. The rendering can be broken down
+					// into eight triangles, four of them are the rotation of this point, and the other
+					// are the reflection of those, with the depth inverted.
+
+					setPixel(x, y, colour);
+					setPixel(canvas.width - y, x, colour);
+					setPixel(canvas.width - x, canvas.height - y, colour);
+					setPixel(y, canvas.height - x, colour);
+
+					// we can cheat by simply flipping the colour - which represents depth
+					colour = palette[palette.length - 1 - colourIndex];
+					setPixel(y, x, colour);
+					setPixel(canvas.width - x, y, colour);
+					setPixel(canvas.width - y, canvas.height - x, colour);
+					setPixel(x, canvas.height - y, colour);
 
 					b += bi;
 					d += di;
@@ -418,6 +439,7 @@
 				aSine = Math.sin(a);
 				cSine = Math.sin(c);
 			}
+			context.putImageData(img, 0, 0);
 		}
 
 		function buildPalette(){
@@ -492,10 +514,7 @@
 			ctx.lineTo(maxx, maxy);
 			ctx.stroke();
 
-
-
 		};
-
 	</script>
 </head>
 <body>
