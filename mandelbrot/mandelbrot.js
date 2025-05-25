@@ -1,6 +1,5 @@
 'use strict';
 var canvas, context;
-var palette;
 var map;
 var config;
 var paletteTabs;
@@ -38,23 +37,7 @@ var defaultConfig = {
 	}
 }
 
-function buildPalette(settings){
-	return {};
-	if(settings == undefined) settings = config;
-	var n;
-	var plt = [];
-	var maxColour = settings.map.maxColourIndex;
-	if(settings.palette.master == undefined){
-		settings.palette.master = JSON.parse(JSON.stringify(defaultConfig.palette.master));
-	}
-
-	for(n = 0; n < maxColour; n++){
-		plt[n] = createColour(n, settings);
-	}
-	plt[n] = {red : 0, green : 0, blue : 0, alpha : 1};
-	return plt;
-}
-
+// generate a colour to match given index
 function createColour(idx, config){
 	var maxColour = config.map.maxColourIndex;
 	var ang = idx * 2 * Math.PI / maxColour;
@@ -101,7 +84,6 @@ function mandelbrot(c, ci, accuracy){
 function staticRender(targetCanvas, width, height, config, callback){
 	var x, y;
 	var c, ci
-	var plt = buildPalette(config);
 
 	var colour;
 	var ctx = targetCanvas.getContext('2d');
@@ -194,7 +176,6 @@ function resetRenderOptions(){
 	config.map.maxColourIndex = map.maxColourIndex;
 
 	document.getElementById('numcolours').value = config.map.maxColourIndex;
-	palette = buildPalette();
 	render();
 
 }
@@ -251,7 +232,6 @@ function buildLoadButton(rendering){
 
 	button.onclick = function(){
 		config = JSON.parse(JSON.stringify(rendering));
-		palette = buildPalette(config);
 		initPaletteAdjusters();
 
 		updateFields();
@@ -326,7 +306,6 @@ function showWelcomeWindow(){
 function bgRender(targetCanvas, width, height, config, callback){
 	var x = 0, y = 0;
 	var c, ci
-	var plt = buildPalette(config);
 	var totalPixels = targetCanvas.width * targetCanvas.height;
 	var currentPixel = 0;
 
@@ -376,6 +355,7 @@ function bgRender(targetCanvas, width, height, config, callback){
 }
 */
 
+// show a popup dialogue containing the configuration JSON object
 function exportParameters(){
 	var buttons = [
 		{
@@ -394,6 +374,7 @@ function exportParameters(){
 	popup(content, [{label : 'Close', action : closePopup}]);
 }
 
+// show a popup dialogue for downloading images
 function exportImage(){
 	var buttons = [
 		{
@@ -516,10 +497,13 @@ function emptyNode(node){
 		node.removeChild(node.lastChild);
 	}
 }
+
+// show a popup dialogue explaining how the palette is generated
 function showPaletteInfo(){
 	popup(document.getElementById("paletteInfoTemplate").cloneNode(true), [{label : 'Close', action : closePopup}]);
 }
 
+// create an interactive popup window
 function popup(content, buttons){
 	var n, button, wrapper, popup;
 
@@ -548,10 +532,9 @@ function closePopup(){
 	wrapper.innerHTML = '';
 }
 
+// take the children of a given element and make them a set of tabs
 function tabinate(element, params){
-	/*
-		Take a series of child elements and make them a set of tabs
-	*/
+
 	if(params == undefined) params = {};
 	var n;
 	var defaults = {
@@ -597,7 +580,7 @@ function tabinate(element, params){
 
 }
 
-/*  initialization code below this point */
+// The initial startup procedure
 function initialize(step){
 	if(step == undefined) step = 'initialize';
 	switch(step){
@@ -620,10 +603,6 @@ function initialize(step){
 
 			context = canvas.getContext('2d');
 
-			setTimeout(function(){initialize('build palette');}, 0);
-			break;
-		case 'build palette':
-			palette = buildPalette();
 			setTimeout(function(){initialize('initialize fractal');}, 0);
 			break;
 
@@ -654,6 +633,7 @@ function initialize(step){
 	}
 }
 
+// initialize mouse interaction
 function initMouseWheel(){
 	canvas.onwheel = (function(){
 		var zoomChange = 0;
@@ -730,6 +710,7 @@ function initMouseDrag(){
 	}
 }
 
+// initialize settings fields to react on change
 function initFieldUpdates(){
 	document.getElementById('xOffset').onchange = function(){
 		if(isNaN(this.value)){
@@ -774,7 +755,6 @@ function initFieldUpdates(){
 			this.classList.add('error');
 		}else{
 			config.map.maxColourIndex = 1 * this.value;
-			palette = buildPalette();
 			this.classList.remove('error');
 			refresh();
 		}
@@ -787,7 +767,7 @@ function multiplyAccuracy(factor){
 	render();
 }
 
-
+// initialize the slidey widgets and text fields for the palette
 function initPaletteAdjusters(){
 	var n, c, elements = {};
 	for(c of ['red', 'green', 'blue', 'master']){
@@ -826,7 +806,6 @@ function initPaletteAdjusters(){
 				var val = 1 * this.value;
 				config.palette[n].offset = val;
 				elements[n].offsetText.value = val;
-				palette = buildPalette();
 				refresh();
 			};
 
@@ -834,7 +813,6 @@ function initPaletteAdjusters(){
 				var val = 1 * this.value;
 				config.palette[n].offset = val;
 				elements[n].offset.value = val;
-				palette = buildPalette();
 				refresh();
 			};
 
@@ -844,7 +822,6 @@ function initPaletteAdjusters(){
 				var val = 1 * this.value;
 				config.palette[n].stagger = val;
 				elements[n].staggerText.value = val;
-				palette = buildPalette();
 				refresh();
 			};
 
@@ -852,7 +829,6 @@ function initPaletteAdjusters(){
 				var val = 1 * this.value;
 				config.palette[n].stagger = val;
 				elements[n].stagger.value = val;
-				palette = buildPalette();
 				refresh();
 			};
 
@@ -861,7 +837,6 @@ function initPaletteAdjusters(){
 					var val = 1 * this.value;
 					config.palette[n].period = val;
 					elements[n].periodText.value = val;
-					palette = buildPalette();
 					refresh();
 				};
 
@@ -869,7 +844,6 @@ function initPaletteAdjusters(){
 					var val = 1 * this.value;
 					config.palette[n].period = val;
 					elements[n].period.value = val;
-					palette = buildPalette();
 					refresh();
 				}
 			}
