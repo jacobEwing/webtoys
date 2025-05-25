@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script type="text/javascript" src="mandelbrot.js"></script>
+	<link rel="stylesheet" href="mandelbrot.css" />
+	<link rel="icon" type="image" href="Mandelbrot.ico" />
+</head>
+<body>
+	<div id="toolbox">
+		<div id="settings" class="toolWrapper">
+			<h1>Parameters</h1>
+			<div>
+				<input type="number" id="xOffset" tabindex="1"/>
+				X Coordinate 
+			</div><div>
+				<input type="number" id="yOffset" tabindex="2"/>
+				Y Coordinate
+			</div><div>
+				<input type="number" id="width" tabindex="3"/>
+				Area Size
+			</div><div>
+				<div style="float:right; display:inline-block">
+					<input type="number" id="accuracy" style="float:none; width:8.25em"/>
+					<div class="smallButton" id="doubleAccuracy" style="margin-right 0; margin-left: auto" onclick="multiplyAccuracy(2)">&times;2</div>
+					<div class="smallButton" id="halveAccuracy" style="margin-right 0; margin-left: auto" onclick="multiplyAccuracy(.5)">&divide;2</div>
+				</div>
+				Accuracy
+			</div>
+			<div style="margin-top: 0.5em; text-align:center;">
+				<div class="button" onclick="setTimeout(resetMandelbrot, 0)">Reset</div>
+			</div>
+		</div>
+
+		<div id="colourControl" class="toolWrapper">
+			<a href="javascript:;" class="infoButton" onclick="showPaletteInfo()">?</a>
+			<h1>Palette</h1>
+			<div id="paletteTabs">
+				<div data-tab="Offset">
+					<table>
+						<tr>
+							<td>Master</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterOffset" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="masterOffsetText" class="colourText" tabindex="8"/></td>
+						</tr>
+						<tr>
+							<td>Red</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="redOffset" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="redOffsetText" class="colourText" tabindex="9"/></td>
+						</tr>
+						<tr>
+							<td>Green</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="greenOffset" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="greenOffsetText" class="colourText" tabindex="10"/></td>
+						</tr>
+						<tr>
+							<td>Blue</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="blueOffset" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="blueOffsetText" class="colourText" tabindex="11"/></td>
+						</tr>
+					</table>
+				</div>
+
+				<div data-tab="Stagger">
+					<table>
+						<tr>
+							<td>Master</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterStagger" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="masterStaggerText" class="colourText" tabindex="12"/></td>
+						</tr>
+						<tr>
+							<td>Red</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="redStagger" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="redStaggerText" class="colourText" tabindex="13"/></td>
+						</tr>
+						<tr>
+							<td>Green</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="greenStagger" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="greenStaggerText" class="colourText" tabindex="15"/></td>
+						</tr>
+						<tr>
+							<td>Blue</td>
+							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="blueStagger" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="blueStaggerText" class="colourText" tabindex="16"/></td>
+						</tr>
+					</table>
+				</div>
+				<div data-tab="Period">
+					<table>
+						<tr>
+							<td>Red</td>
+							<td><input type="range" step=".01" min=".01" max="20" value="1" id="redPeriod" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="redPeriodText" class="colourText" tabindex="17"/></td>
+						</tr>
+						<tr>
+							<td>Green</td>
+							<td><input type="range" step=".01" min=".01" max="20" value="1" id="greenPeriod" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="greenPeriodText" class="colourText" tabindex="18"/></td>
+						</tr>
+						<tr>
+							<td>Blue</td>
+							<td><input type="range" step=".01" min=".01" max="20" value="1" id="bluePeriod" class="colourAdjuster"/></td>
+							<td class="shortTD"><input type="text" id="bluePeriodText" class="colourText" tabindex="19"/></td>
+						</tr>
+					</table>
+				</div>
+			</div>
+
+			<div style="margin-top: 0.25lh">
+				<span>Wave Period:</span>
+				<input type="number" id="numcolours" size="4" tabindex="7"/>
+			</div>
+
+		</div>
+		<div id="savedWrapper">
+			<h1>Saved Renderings</h1>
+			<div id="savedRenderings"></div>
+		</div>
+	</div>
+	<div id="leftColumn">
+		<div id="canvasWrapper"></div>
+	</div>
+	<div id="exports" class="toolWrapper">
+		<div class="button" onclick="exportImage()">Download Image</div>
+		<div class="button" onclick="saveLocation();">Save Parameters</div>
+		<div class="button" onclick="exportParameters();">Export Parameters</div>
+	</div>
+
+
+	<!-- All content below here is used for pop-up dialogues -->
+	<div id="popupWrapper"></div>
+	<div id="temeplateWrapper" style="display:none">
+		<div id="downloadImageTemplate">
+			<h2>Download image</h2>
+			<div class="previewWrapper"></div>
+			<div class="downloadImageForm">
+				<p>Please choose the pixel width and height of the image you want to download.</p>
+				<div>
+					<span class="fieldLabel">Width:</span>
+					<input type="number" name="imageWidth"></input>
+				</div>
+				<div>
+					<span class="fieldLabel">Height:</span>
+					<input type="number" name="imageHeight"></input>
+				</div>
+			</div>
+		</div>
+
+		<div id="introTemplate">
+			<h2>The Mandelbrot Explorer</h2>
+			<p>The purpose of this application is to let you explore the Mandelbrot Set in it's full glory, and allow you to play with the colours used to bring it to it's full beauty.</p>
+			<p>Here's a short hotlist of how you can interact directly with the image:</p>
+			<ul>
+				<li><strong>The mousewheel</strong> zooms in and out</li>
+				<li><strong>A left click</strong> will center on the point you clicked.</li>
+				<li><strong>left click and drag</strong> to move your viewpoint</li>
+			</ul>
+		</div>
+
+		<div id="paletteInfoTemplate">
+			<h2>Yes, the palette settings are rather weird...</h2>
+
+			<p>The Mandelbrot function returns a simple integer value, that value being the
+			number of iterations required to meet its end condition.  It's what we do with
+			that value that builds the colours displayed.</p>
+
+			<p>In this interface, we pass those counts into a sine function, giving us nice
+			oscillating waves to build colours with. For each primary colour, the following
+			function is applied:</p>
+			<code>
+				c(n) = &#8970;127.5 + 127.5 * sin((periodScale * 2&pi;n / defaultPeriod) + offset + masterOffset + stagger)&#8971;
+
+			</code>
+			<ul>
+				<li><strong>defaultPeriod</strong> is the count range required to cycle the angle through a full 2&pi; radians (360&deg;).  If you find there is too much noise - caused by having too wide a variety of return values from the Mandelbrot function - increasing this value will smooth things out.</li>
+				<li><strong>periodScale</strong> is a multiplier applied to the angle for that primary. These are adjusted in the "Period" tab.  Adjusting these can provide a much wider variety of beautiful (and ugly) colours.</li>
+				<li><strong>offset</strong> adjusts the angle by a certain amount, offsetting that primary from the others by the given amount.  This can be adjusted in the "Offset" tab.</li>
+				<li><strong>masterOffset</strong> is the same as offset, but applied to all primaries. Also found in the offset tab.</li>
+				<li><strong>stagger</strong> is an offset that is applied to the given primary for every second colour, adding a striped look to the results.  Adjustable under the "Stagger" tab.</li>
+			</ul>
+		</div>
+
+		<div id="exportParametersTemplate">
+			<h1>Export as JSON</h1>
+
+			<p>The parameters for each rendering are stored as a JSON object, describing
+			the rendering itself, as well as the palette configuration.  The text area
+			below contains the parameters used for this rendering.</p>
+
+			<textarea></textarea>
+
+			<p>For more information on how the palette configuration is used, click on the
+			(?) button in the palette section on the right.</p>
+		</div>
+	</div>
+</body>
+</html>
