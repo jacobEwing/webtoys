@@ -314,6 +314,21 @@ span.fieldLabel{
 	min-height: 3cm;
 }
 
+.cancelButton {
+	background: radial-gradient(circle at top left, rgb(255 155 150) 40%, rgba(230, 44, 11, 1) 100%);
+	box-shadow: inset 5px 5px 8px 0px rgba(255, 255, 255, .5), inset -5px -5px 8px 0px rgba(0, 0, 0, 0.5);
+	float: right;
+	text-decoration: none;
+	color: #FFF;
+	font-weight: bold;
+	border-radius: 50%;
+	width: 1lh;
+	height: 1lh;
+	display: inline-block;
+	text-align:center;
+	font-size: 130%;
+}
+
 .infoButton {
 	float: right;
 	text-decoration: none;

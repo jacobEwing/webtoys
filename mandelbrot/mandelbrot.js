@@ -297,63 +297,10 @@ function renderSavedLocations(){
 
 }
 
+// a popup blurb of basic instruction
 function showWelcomeWindow(){
 	popup(document.getElementById("introTemplate").cloneNode(true), [{label : 'Close', action : closePopup}]);
 }
-
-// used for rendering images outside of the view area (broken)
-/*
-function bgRender(targetCanvas, width, height, config, callback){
-	var x = 0, y = 0;
-	var c, ci
-	var totalPixels = targetCanvas.width * targetCanvas.height;
-	var currentPixel = 0;
-
-	var doSomePixels = function(numPixels){
-		if(numPixels == undefined) numPixels = 1000;
-		for(let n = 0; n < numPixels && currentPixel < totalPixels; n++){
-
-			currentPixel++;
-			x = (x + 1) % width;
-			if(x == 0){
-				y++;
-				console.log(y);
-			}
-		}
-
-		if(totalPixels >= currentPixel){
-			setTimeout(doSomePixels, 10); 
-		}else{
-			console.log('done: ' + totalPixels + ', ' + currentPixel);
-		}
-	}
-
-	doSomePixels();
-
-	var colour;
-	var ctx = targetCanvas.getContext('2d');
-	for(x = 0; x < targetCanvas.width; x++){
-		c =  config.map.x - config.map.width / 2 + x * config.map.width / width;
-
-		for(y = 0; y < targetCanvas.height; y++){
-			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
-
-			colour = mandelbrot(c, ci, config.map.accuracy);
-			if(colour > config.map.accuracy){
-				colour = colourBlack;
-			}else{
-				colour = createColour(colour, config)
-			}
-			ctx.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
-			ctx.fillRect(x, y, 1, 1);
-
-		}
-	}
-	if(callback != undefined){
-		callback();
-	}
-}
-*/
 
 // show a popup dialogue containing the configuration JSON object
 function exportParameters(){
@@ -372,6 +319,59 @@ function exportParameters(){
 	textField.value = textContent;
 
 	popup(content, [{label : 'Close', action : closePopup}]);
+}
+
+// render the image in the background
+// used strictly for downloading, to avoid page not responding errors
+function bgRender(targetCanvas, width, height, config, onComplete){
+	var x, y;
+	var c, ci
+
+	var colour;
+	var ctx = targetCanvas.getContext('2d');
+	var area = targetCanvas.width * targetCanvas.height;
+	var idx = 0;
+	var chunkSize = 2000;
+	var cancelled = false;
+
+	var progressBar = document.getElementById('progressBarTemplate').cloneNode(true);
+	progressBar.style.background = "linear-gradient(90deg, rgba(48, 107, 255, 1) 0%, rgba(0, 0, 0, 0) 0%)";
+	document.body.appendChild(progressBar);
+
+	var cancelButton = progressBar.querySelector('a');
+	cancelButton.onclick = function(){ cancelled = true; };
+
+	var renderSegment = function(){
+		var n;
+		for(n = idx; n < area && n < idx + chunkSize; n++){
+			x = n % targetCanvas.width;
+			y = Math.floor(n / targetCanvas.width);
+			c =  config.map.x - config.map.width / 2 + x * config.map.width / width;
+			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
+
+			colour = mandelbrot(c, ci, config.map.accuracy);
+			if(colour > config.map.accuracy){
+				colour = colourBlack;
+			}else{
+				colour = createColour(colour, config)
+			}
+			ctx.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
+			ctx.fillRect(x, y, 1, 1);
+
+		}
+		idx = n;
+		if(cancelled == true){
+			progressBar.remove();
+		}else if(idx < area){
+			progressBar.style.background = "linear-gradient(90deg, rgba(48, 107, 255, 1) " + Math.round(100 * idx / area) + "%, rgba(0, 0, 0, 0) 0%)";
+			setTimeout(renderSegment, 1);
+		}else{
+			progressBar.remove();
+			onComplete();
+		}
+	};
+
+	renderSegment();
 }
 
 // show a popup dialogue for downloading images
@@ -399,13 +399,14 @@ function exportImage(){
 				rendering.height = height;
 				closePopup();
 
-				staticRender(rendering, width, height, cfg);
+				bgRender(rendering, width, height, cfg, function(){
+					var image = rendering.toDataURL("image/png", 1.0).replace("image/png", "image/octet-stream");
+					var link = document.createElement('a');
+					link.download = 'rendering.png';
+					link.href = image;
+					link.click();
+				});
 
-				var image = rendering.toDataURL("image/png", 1.0).replace("image/png", "image/octet-stream");
-				var link = document.createElement('a');
-				link.download = 'rendering.png';
-				link.href = image;
-				link.click();
 			}
 
 
@@ -626,7 +627,6 @@ function initialize(step){
 		case 'populate saved files':
 			showWelcomeWindow();
 			renderSavedLocations();
-
 
 
 
