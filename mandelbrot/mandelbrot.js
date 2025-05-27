@@ -5,6 +5,46 @@ var config;
 var paletteTabs;
 var colourBlack = { red : 0, green : 0, blue : 0, alpha : 1 };
 
+
+/*
+	--- How the configuration is used ---
+
+	In the "map" section, we have some fairly self explanatory values:
+
+	width, height:
+		The size of the area in the Mandelbrot set being rendered
+	x, y:
+		The centre point of the area being rendered
+
+	accuracy:
+		The maximum count allowed when calculating. 
+
+	colourWavePeriod:
+		Slightly less intuitive. When generating colours, the count returned by the
+		Mandelbrot function is used to calculate an angle between 0 and 2pi radians.
+		That angle is used in a sine function to generate smoothly tapering colour
+		patterns.
+
+		colourWavePeriod is the range of the count that scales to 2pi.  
+
+		So if this is set to 100, then any pixels that receive a count of C will get an
+		angle of 2 * pi * C / 100.
+
+	The "palette" section defines how colours are generated from the count.
+
+	For each primary colour, we have the values "offset", "stagger", and "period".
+
+	When building a colour, we take angle calculated from the count (see
+	colourWavePeriod above), and apply a sine function to it.  The exact function
+	is:
+		primaryValue = 127.5 + 127.5 * sin(angle * period + offset + stagger)
+	
+	Note that stagger is only applied when the count is an odd number.  The exact
+	code used can be found in the createColour function defined almost immediately
+	below.
+
+*/
+
 var defaultConfig = {
 	"map": {
 		"width": 4,
@@ -12,13 +52,13 @@ var defaultConfig = {
 		"x": 0,
 		"y": 0,
 		"accuracy": 256,
-		"maxColourIndex": 64
+		"colourWavePeriod": 64
 	},
 	"palette": {
 		"red": {
 			"offset": -.47,
 			"stagger": 0,
-			"period" : 1
+			"period" : 1,
 		},
 		"green": {
 			"offset": 0,
@@ -39,9 +79,8 @@ var defaultConfig = {
 
 // generate a colour to match given index
 function createColour(idx, config){
-	var maxColour = config.map.maxColourIndex;
-	var ang = idx * 2 * Math.PI / maxColour;
-	var rval = {
+	let ang = idx * 2 * Math.PI / config.map.colourWavePeriod;
+	return {
 		red : Math.floor(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.red.period + config.palette.red.offset + config.palette.master.offset +
@@ -62,7 +101,6 @@ function createColour(idx, config){
 		),
 		alpha : 1
 	};
-	return rval;
 }
 
 function mandelbrot(c, ci, accuracy){
@@ -173,9 +211,9 @@ function resetMandelbrot(){
 
 function resetRenderOptions(){
 	var map  = JSON.parse(JSON.stringify(defaultConfig.map));
-	config.map.maxColourIndex = map.maxColourIndex;
+	config.map.colourWavePeriod = map.colourWavePeriod;
 
-	document.getElementById('numcolours').value = config.map.maxColourIndex;
+	document.getElementById('numcolours').value = config.map.colourWavePeriod;
 	render();
 
 }
@@ -185,7 +223,7 @@ function updateFields(){
 	document.getElementById('yOffset').value = config.map.y;
 	document.getElementById('width').value = config.map.width;
 	document.getElementById('accuracy').value = config.map.accuracy;
-	document.getElementById('numcolours').value = config.map.maxColourIndex;
+	document.getElementById('numcolours').value = config.map.colourWavePeriod;
 
 };
 
@@ -270,6 +308,31 @@ function renderSavedLocations(){
 	}else{
 		renderings = JSON.parse(localStorage.getItem('renderings'));
 	}
+
+	/*****
+	This small block of code was required to handle the renaming of a key variable.
+	Previously, each config JSON object had a field called "maxColourIndex".  This
+	originally made sense because the system was written to work with a fixed
+	palette size for compatability with Manyland.com.  I have since migrated away
+	from that palette limit.  Instead, that varible now represents the period of
+	the sine wave that is used to calculate colours.  i.e. what count from the
+	mandelbrot set cycles through every angle that passed to the sine function used
+	in generating colours.  Renaming it to colourWavePeriod has been long overdue,
+	and this block of code offers backward compatability with previously saved
+	configurations.
+
+	I doubt this program gets a lot of public usage, and probably don't need to
+	leave this in for long.
+	*****/
+	for(let n in renderings){
+		if(renderings[n].map.maxColourIndex != undefined){
+			renderings[n].map.colourWavePeriod = renderings[n].map.maxColourIndex;
+			delete(renderings[n].map.maxColourIndex);
+		}
+	}
+	localStorage.setItem('renderings', JSON.stringify(renderings));
+	/*******************/
+
 
 	let target = document.getElementById('savedRenderings');
 	let header = target.parentElement.querySelector('h1');
@@ -754,7 +817,7 @@ function initFieldUpdates(){
 		if(isNaN(this.value) || this.value <= 0){
 			this.classList.add('error');
 		}else{
-			config.map.maxColourIndex = 1 * this.value;
+			config.map.colourWavePeriod = 1 * this.value;
 			this.classList.remove('error');
 			refresh();
 		}
