@@ -58,7 +58,7 @@ var defaultConfig = {
 		"red": {
 			"offset": -.47,
 			"stagger": 0,
-			"period" : 1,
+			"period" : 1
 		},
 		"green": {
 			"offset": 0,
