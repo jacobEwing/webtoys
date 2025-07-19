@@ -31,6 +31,26 @@
 			</div>
 		</div>
 
+		<div id="modifiers" class="toolWrapper">
+			<h1>Modifiers</h1>
+			<div id="modifierTabs">
+				<div data-tab="End Condition">
+					<div>
+						<input type="radio" name="endCondition" value="addition" id="endCondition1" checked>
+						<label for="endCondition1" selected>Addition (z&#178; + zi&#178; &lt; 4)</label>
+					</div>
+					<div>
+						<input type="radio" name="endCondition" value="subtraction" id="endCondition2">
+						<label for="endCondition2" selected>Subtraction (z&#178; - zi&#178; &lt; 4)</label>
+					</div>
+					<div>
+						<input type="radio" name="endCondition" value="multiplication" id="endCondition3">
+						<label for="endCondition3">Multiplcation (z&#178; * zi&#178; &lt; 4)</label>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<div id="colourControl" class="toolWrapper">
 			<a href="javascript:;" class="infoButton" onclick="showPaletteInfo()">?</a>
 			<h1>Palette</h1>
@@ -111,10 +131,6 @@
 			</div>
 
 		</div>
-		<div id="savedWrapper">
-			<h1>Saved Renderings</h1>
-			<div id="savedRenderings"></div>
-		</div>
 	</div>
 	<div id="leftColumn">
 		<div id="canvasWrapper"></div>
@@ -123,6 +139,10 @@
 		<div class="button" onclick="exportImage()">Download Image</div>
 		<div class="button" onclick="saveLocation();">Save Parameters</div>
 		<div class="button" onclick="exportParameters();">Export Parameters</div>
+	</div>
+	<div id="savedWrapper">
+		<h1>Saved Renderings</h1>
+		<div id="savedRenderings"></div>
 	</div>
 
 

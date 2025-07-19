@@ -80,9 +80,12 @@ div.smallButton:active{
 }
 
 div.previewButton{
-	display: inline;
+	display: inline-block;
 	margin: 1mm;
 	position:relative;
+	background-image: repeating-linear-gradient(45deg, #eee 0, #eee 1px, transparent 0, transparent 50%);
+	background-size: 6px 6px;
+	background-color: #ccc;
 }
 
 #settings > div input{
@@ -103,11 +106,9 @@ h1{
 }
 .toolWrapper >h1{
 	margin-top:0;
-	border-bottom: 1px solid #aaa;
 }
 
 #colourControl > h1{
-	border-bottom: none;
 	margin-bottom: 1mm;
 }
 

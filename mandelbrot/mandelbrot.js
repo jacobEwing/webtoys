@@ -4,7 +4,7 @@ var map;
 var config;
 var paletteTabs;
 var colourBlack = { red : 0, green : 0, blue : 0, alpha : 1 };
-
+var loadButtonSize = 96;
 
 /*
 	--- How the configuration is used ---
@@ -19,6 +19,8 @@ var colourBlack = { red : 0, green : 0, blue : 0, alpha : 1 };
 	accuracy:
 		The maximum count allowed when calculating. 
 
+	The "palette" section defines how colours are generated from the count:
+
 	colourWavePeriod:
 		Slightly less intuitive. When generating colours, the count returned by the
 		Mandelbrot function is used to calculate an angle between 0 and 2pi radians.
@@ -29,8 +31,6 @@ var colourBlack = { red : 0, green : 0, blue : 0, alpha : 1 };
 
 		So if this is set to 100, then any pixels that receive a count of C will get an
 		angle of 2 * pi * C / 100.
-
-	The "palette" section defines how colours are generated from the count.
 
 	For each primary colour, we have the values "offset", "stagger", and "period".
 
@@ -43,6 +43,10 @@ var colourBlack = { red : 0, green : 0, blue : 0, alpha : 1 };
 	code used can be found in the createColour function defined almost immediately
 	below.
 
+	The "options" section is for custom modifiers of the fractal or the colour
+	selection.  As of this writing it only has options for the end condition on the
+	Mandelbrot loop, but will later have other options.
+
 */
 
 var defaultConfig = {
@@ -51,10 +55,10 @@ var defaultConfig = {
 		"height": 4,
 		"x": 0,
 		"y": 0,
-		"accuracy": 256,
-		"colourWavePeriod": 64
+		"accuracy": 256
 	},
 	"palette": {
+		"colourWavePeriod": 64,
 		"red": {
 			"offset": -.47,
 			"stagger": 0,
@@ -74,26 +78,29 @@ var defaultConfig = {
 			"offset": 0,
 			"stagger": 0
 		}
+	},
+	"options" : {
+		"endCondition" : ""
 	}
 }
 
 // generate a colour to match given index
 function createColour(idx, config){
-	let ang = idx * 2 * Math.PI / config.map.colourWavePeriod;
+	let ang = idx * 2 * Math.PI / config.palette.colourWavePeriod;
 	return {
-		red : Math.floor(127.5 + 127.5 * 
+		red : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.red.period + config.palette.red.offset + config.palette.master.offset +
-				(config.palette.red.stagger + config.palette.master.stagger) * (idx & 1)  
+				(config.palette.red.stagger + config.palette.master.stagger) * (idx & 1)
 			)
 		),
-		green : Math.floor(127.5 + 127.5 * 
+		green : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.green.period + config.palette.green.offset + config.palette.master.offset +
 				(config.palette.green.stagger + config.palette.master.stagger) * (idx & 1)  
 			)
 		),
-		blue : Math.floor(127.5 + 127.5 * 
+		blue : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.blue.period + config.palette.blue.offset + config.palette.master.offset +
 				(config.palette.blue.stagger + config.palette.master.stagger) * (idx & 1)  
@@ -103,19 +110,83 @@ function createColour(idx, config){
 	};
 }
 
-function mandelbrot(c, ci, accuracy){
+// returns the clockwise angle between the vertical axis and the line (x1, y1)-(x2, y2)
+function rel_ang(x1, y1, x2, y2){
+	var hyp, alpha, deltax, deltay;
+	deltax = x2 - x1;
+	deltay = y2 - y1;
+	hyp = Math.sqrt(deltax * deltax + deltay * deltay);
+	/********* figure out the value for alpha *********/
+	if(x2 == x1){
+		alpha = y2 > y1 ? Math.PI : 0;
+	}else if(y2 == y1){
+		alpha = (x2 < x1 ? 3 : 1) * Math.PI / 2
+	}else if(x2 > x1){
+		alpha = y2 == y1 ? 0 : Math.PI - Math.acos(deltay / hyp);
+	}else if(x2 < x1){
+		alpha = y2 == y1 ? 0 : 2 * Math.PI - Math.acos(-deltay / hyp);
+	}
+
+	return alpha;
+}
+
+function mandelbrot(c, ci, config){
+	var accuracy = config.map.accuracy;
 	var count = 0;
 	var z = 0, zi = 0, zsq = 0;
 	var zisq = 0;
 
-	while(count <= accuracy && zsq + zisq < 4){
-		zi = z * zi * 2 + ci;
-		z = zsq - zisq + c;
-		zsq = z * z;
-		zisq = zi * zi;
-		count++;
+	/*  This ugly nesting of the loop inside the switch is for speed.  Previously,
+	 *  I used a case structure to define a function that determined the end
+	 *  condition. The use of that function increased the time required to render.
+	 *  Moving the loop into the select-case fixes that. */
+	switch(config.options.endCondition){
+		case 'multiplication':
+			while(count <= accuracy && zsq * zisq < 4){
+				zi = z * zi * 2 + ci;
+				z = zsq - zisq + c;
+				zsq = z * z;
+				zisq = zi * zi;
+				count++;
+			}
+			break;
+		case 'subtraction':
+			while(count <= accuracy && zsq - zisq < 4){
+				zi = z * zi * 2 + ci;
+				z = zsq - zisq + c;
+				zsq = z * z;
+				zisq = zi * zi;
+				count++;
+			}
+			break;
+		default:
+			while(count <= accuracy && zsq + zisq < 4){
+				zi = z * zi * 2 + ci;
+				z = zsq - zisq + c;
+				zsq = z * z;
+				zisq = zi * zi;
+				count++;
+			}
 	}
+
 	return count;
+
+// alternate return values for modified output
+
+//	return count + z - c + zi - ci;
+
+/*
+	let ang = rel_ang(c, ci, z, zi);
+	return Math.floor((accuracy / (count + 1)) * (1 + Math.sin(ang))) + count;
+*/
+
+/*	if(count <= accuracy){
+		return count;
+	}else{
+		let ang = rel_ang(c, ci, z, zi);
+		return Math.floor(accuracy  * (.5 + Math.sin(ang - count) / 2) + count >> 1);
+	}
+*/
 }
 
 // used for rendering images outside of the view area
@@ -131,7 +202,7 @@ function staticRender(targetCanvas, width, height, config, callback){
 		for(y = 0; y < targetCanvas.height; y++){
 			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
 
-			colour = mandelbrot(c, ci, config.map.accuracy);
+			colour = mandelbrot(c, ci, config);
 			if(colour > config.map.accuracy){
 				colour = colourBlack;
 			}else{
@@ -161,7 +232,7 @@ function render(){
 
 		for(y = 0; y < canvas.height; y++){
 			ci = config.map.y - config.map.height / 2 + y * config.map.height / canvas.height;
-			map[x][y] = mandelbrot(c, ci, config.map.accuracy);
+			map[x][y] = mandelbrot(c, ci, config);
 			if(map[x][y] > config.map.accuracy){
 				colour = colourBlack;
 			}else{
@@ -210,10 +281,10 @@ function resetMandelbrot(){
 }
 
 function resetRenderOptions(){
-	var map  = JSON.parse(JSON.stringify(defaultConfig.map));
-	config.map.colourWavePeriod = map.colourWavePeriod;
+	var palette  = JSON.parse(JSON.stringify(defaultConfig.palette));
+	config.palette.colourWavePeriod = palette.colourWavePeriod;
 
-	document.getElementById('numcolours').value = config.map.colourWavePeriod;
+	document.getElementById('numcolours').value = config.palette.colourWavePeriod;
 	render();
 
 }
@@ -223,7 +294,18 @@ function updateFields(){
 	document.getElementById('yOffset').value = config.map.y;
 	document.getElementById('width').value = config.map.width;
 	document.getElementById('accuracy').value = config.map.accuracy;
-	document.getElementById('numcolours').value = config.map.colourWavePeriod;
+	document.getElementById('numcolours').value = config.palette.colourWavePeriod;
+	
+	switch(config.options.endCondition){
+		case 'multiplication':
+			document.getElementById('endCondition3').checked = true;
+			break;
+		case 'subtraction':
+			document.getElementById('endCondition2').checked = true;
+			break;
+		default:
+			document.getElementById('endCondition1').checked = true;
+	}
 
 };
 
@@ -257,19 +339,25 @@ function deleteSavedLocation(idx){
 
 }
 
-function buildLoadButton(rendering){
-	var button, n;
-	button = document.createElement('div');
-	button.classList.add('previewButton');
+function buildLoadButton(rendering, button){
+	
+	var n;
+	if(button == undefined){
+		button = document.createElement('div');
+		button.classList.add('previewButton');
+	}
 	var cnvs = document.createElement('canvas');
-	cnvs.width = 96;
-	cnvs.height = 96;
+	cnvs.width = loadButtonSize;
+	cnvs.height = loadButtonSize;
 	staticRender(cnvs, cnvs.width, cnvs.height, rendering);
 	button.appendChild(cnvs);
 	var data = {};
 
 	button.onclick = function(){
 		config = JSON.parse(JSON.stringify(rendering));
+		if(config.options == undefined){
+			config.options = {};
+		}
 		initPaletteAdjusters();
 
 		updateFields();
@@ -309,31 +397,6 @@ function renderSavedLocations(){
 		renderings = JSON.parse(localStorage.getItem('renderings'));
 	}
 
-	/*****
-	This small block of code was required to handle the renaming of a key variable.
-	Previously, each config JSON object had a field called "maxColourIndex".  This
-	originally made sense because the system was written to work with a fixed
-	palette size for compatability with Manyland.com.  I have since migrated away
-	from that palette limit.  Instead, that varible now represents the period of
-	the sine wave that is used to calculate colours.  i.e. what count from the
-	mandelbrot set cycles through every angle that passed to the sine function used
-	in generating colours.  Renaming it to colourWavePeriod has been long overdue,
-	and this block of code offers backward compatability with previously saved
-	configurations.
-
-	I doubt this program gets a lot of public usage, and probably don't need to
-	leave this in for long.
-	*****/
-	for(let n in renderings){
-		if(renderings[n].map.maxColourIndex != undefined){
-			renderings[n].map.colourWavePeriod = renderings[n].map.maxColourIndex;
-			delete(renderings[n].map.maxColourIndex);
-		}
-	}
-	localStorage.setItem('renderings', JSON.stringify(renderings));
-	/*******************/
-
-
 	let target = document.getElementById('savedRenderings');
 	let header = target.parentElement.querySelector('h1');
 	let loadingSpan = document.createElement('span');
@@ -342,22 +405,41 @@ function renderSavedLocations(){
 
 	header.appendChild(loadingSpan);
 
-	let loadThumbnail = function(){
-		let button = buildLoadButton(renderings.pop());
+	let numRenderings = Object.keys(renderings).length;
+	let button = [];
 
-		target.prepend(button);
-		target.scrollTo(target.scrollWidth, 0);
-		if(renderings.length > 1){
-			setTimeout(loadThumbnail, 100);
+	/*****************
+	I've added an "options" section to the config. This updates existing configs appropriately on load
+	*/
+	for(let n = 0; n < numRenderings; n++){
+		if(renderings[n].options == undefined){
+			renderings[n].options = JSON.parse(JSON.stringify(defaultConfig.options));
+		}
+	}
+	/*****************/
+
+	// write the updated modifications back to local storage
+	localStorage.setItem('renderings', JSON.stringify(renderings));
+
+
+	for(let n = 0; n  < numRenderings; n++){
+		button[n] = document.createElement('div');
+		button[n].classList.add('previewButton');
+		button[n].style.width = loadButtonSize + 'px';
+		button[n].style.height = loadButtonSize + 'px';
+		target.append(button[n]);
+	}
+
+	let loadThumbnail = function(idx){
+		buildLoadButton(renderings[idx], button[idx]);
+		if(idx < numRenderings - 1){
+			setTimeout(function(){loadThumbnail(idx + 1);}, 100);
 		}else{
 			header.removeChild(loadingSpan);
 		}
-
 	}
 
-	loadThumbnail();
-
-
+	loadThumbnail(0);
 }
 
 // a popup blurb of basic instruction
@@ -412,7 +494,7 @@ function bgRender(targetCanvas, width, height, config, onComplete){
 			c =  config.map.x - config.map.width / 2 + x * config.map.width / width;
 			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
 
-			colour = mandelbrot(c, ci, config.map.accuracy);
+			colour = mandelbrot(c, ci, config);
 			if(colour > config.map.accuracy){
 				colour = colourBlack;
 			}else{
@@ -654,6 +736,7 @@ function initialize(step){
 			setTimeout(function(){initialize('create canvas');}, 0);
 
 			tabinate(document.getElementById('paletteTabs'));
+			tabinate(document.getElementById('modifierTabs'));
 
 			break;
 		case 'create canvas':
@@ -684,6 +767,11 @@ function initialize(step){
 			initMouseClick();
 			initFieldUpdates();
 			initPaletteAdjusters();
+			initModifiers();
+			setTimeout(function(){initialize('handle backwards compatability');}, 0);
+			break;
+		case 'handle backwards compatability':
+			updateOldStoredData();
 			setTimeout(function(){initialize('populate saved files');}, 0);
 			break;
 
@@ -695,6 +783,46 @@ function initialize(step){
 
 	}
 }
+
+/* This function is used to handle backwards compatability with old saved
+ * renderings.  The structure in which they're stored has been modified
+ * multiple times and will continue to be so.  This allows old renderings to be
+ * retained. */
+function updateOldStoredData(){
+	let renderings = JSON.parse(localStorage.getItem('renderings'));
+	let numRenderings = Object.keys(renderings).length;
+
+
+	for(let n = 0; n < numRenderings; n++){
+		/***************
+		 * Account for old versions having "maxColourIndex" or having
+		 * "colourWavePeriod" stored with the mandelbrot info instead of the
+		 * palette info.
+		*/
+		if(renderings[n].palette.colourWavePeriod == undefined){
+			if(renderings[n].map.colourWavePeriod != undefined){
+				renderings[n].palette.colourWavePeriod = renderings[n].map.colourWavePeriod;
+			}else if(renderings[n].map.maxColourIndex != undefined){
+				renderings[n].palette.colourWavePeriod = renderings[n].map.maxColourIndex;
+			}else{
+				renderings[n].palette.colourWavePeriod = defaultConfig.palette.colourWavePeriod;
+			}
+		}
+
+		// While we're here, update for old copies missing the wave period settings
+		for(let primary of ['red', 'green', 'blue']){
+			if(renderings[n].palette[primary].period == undefined){
+				renderings[n].palette[primary].period = 1;
+			}
+		}
+	}
+	/****************/
+
+	// write the updates back to localStorage
+	localStorage.setItem('renderings', JSON.stringify(renderings));
+
+}
+
 
 // initialize mouse interaction
 function initMouseWheel(){
@@ -817,7 +945,7 @@ function initFieldUpdates(){
 		if(isNaN(this.value) || this.value <= 0){
 			this.classList.add('error');
 		}else{
-			config.map.colourWavePeriod = 1 * this.value;
+			config.palette.colourWavePeriod = 1 * this.value;
 			this.classList.remove('error');
 			refresh();
 		}
@@ -828,6 +956,18 @@ function multiplyAccuracy(factor){
 	config.map.accuracy = Math.round(config.map.accuracy * factor) ;
 	document.getElementById('accuracy').value = config.map.accuracy;
 	render();
+}
+
+// initialize the input fields in the "modifiers" section
+function initModifiers() {
+	var endConditions = document.getElementsByName('endCondition');
+	for(let n = 0; n < endConditions.length; n++){
+		endConditions[n].onchange = function(){
+			config.options.endCondition = this.value;
+			render();
+		}
+	}
+
 }
 
 // initialize the slidey widgets and text fields for the palette
@@ -910,9 +1050,6 @@ function initPaletteAdjusters(){
 					refresh();
 				}
 			}
-
-
-
 		})(n)
 	}
 
