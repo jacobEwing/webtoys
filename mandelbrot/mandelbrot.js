@@ -1,7 +1,7 @@
 'use strict';
 var canvas, context;
 var map;
-var config;
+var config, preferences;
 var paletteTabs;
 var colourBlack = { red : 0, green : 0, blue : 0, alpha : 1 };
 var loadButtonSize = 96;
@@ -82,6 +82,10 @@ var defaultConfig = {
 	"options" : {
 		"endCondition" : ""
 	}
+}
+
+var defaultPreferences = {
+	"showIntroduction" : 1
 }
 
 // generate a colour to match given index
@@ -444,7 +448,14 @@ function renderSavedLocations(){
 
 // a popup blurb of basic instruction
 function showWelcomeWindow(){
-	popup(document.getElementById("introTemplate").cloneNode(true), [{label : 'Close', action : closePopup}]);
+	popup(document.getElementById("introTemplate").cloneNode(true), [
+		{label : 'Close', action : closePopup},
+		{label : "Don't show again", action : function(){
+			preferences.showIntroduction = 0;
+			savePreferences();
+			closePopup();
+		}}
+	]);
 }
 
 // show a popup dialogue containing the configuration JSON object
@@ -726,12 +737,27 @@ function tabinate(element, params){
 
 }
 
+// save the preferences to localStorage
+function savePreferences(){
+	localStorage.setItem('preferences', JSON.stringify(preferences));
+}
+
 // The initial startup procedure
 function initialize(step){
 	if(step == undefined) step = 'initialize';
 	switch(step){
 		case 'initialize':
+			// load the default configuration
 			config = JSON.parse(JSON.stringify(defaultConfig));
+
+			// get preferences
+			preferences = localStorage.getItem('preferences');
+			if(preferences == null){
+				preferences = JSON.parse(JSON.stringify(defaultPreferences));
+				savePreferences();
+			}else{
+				preferences = JSON.parse(preferences);
+			}
 			
 			setTimeout(function(){initialize('create canvas');}, 0);
 
@@ -776,7 +802,9 @@ function initialize(step){
 			break;
 
 		case 'populate saved files':
-			showWelcomeWindow();
+			if(preferences.showIntroduction == 1){
+				showWelcomeWindow();
+			}
 			renderSavedLocations();
 
 
