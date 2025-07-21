@@ -2,6 +2,7 @@
 var canvas, context;
 var map;
 var config, preferences;
+var activeRendering = 0; // <-- keep track of whether the main interface is currently rendering.
 var paletteTabs;
 var colourBlack = { red : 0, green : 0, blue : 0, alpha : 1 };
 var loadButtonSize = 96;
@@ -38,7 +39,7 @@ var loadButtonSize = 96;
 	colourWavePeriod above), and apply a sine function to it.  The exact function
 	is:
 		primaryValue = 127.5 + 127.5 * sin(angle * period + offset + stagger)
-	
+
 	Note that stagger is only applied when the count is an odd number.  The exact
 	code used can be found in the createColour function defined almost immediately
 	below.
@@ -80,7 +81,9 @@ var defaultConfig = {
 		}
 	},
 	"options" : {
-		"endCondition" : ""
+		"endCondition" : "",
+		"calculationMethod" : "classic",
+		"staggerTiming": "before"
 	}
 }
 
@@ -89,25 +92,41 @@ var defaultPreferences = {
 }
 
 // generate a colour to match given index
-function createColour(idx, config){
-	let ang = idx * 2 * Math.PI / config.palette.colourWavePeriod;
+function createColour(countInfo, config){
+	if(countInfo.count >= config.map.accuracy){
+		return colourBlack;
+	}
+
+	var stagger;
+	switch(config.options.staggerTiming){
+		case 'after':
+			stagger = countInfo.count & 1 ? 1 : 0;
+			break;
+		case 'both':
+			stagger = (countInfo.count & 1 ? 1 : 0) + countInfo.stagger;
+			break;
+		default: // 'before'
+			stagger = countInfo.stagger;
+
+	}
+	let ang = countInfo.count * 2 * Math.PI / config.palette.colourWavePeriod;
 	return {
 		red : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.red.period + config.palette.red.offset + config.palette.master.offset +
-				(config.palette.red.stagger + config.palette.master.stagger) * (idx & 1)
+				(config.palette.red.stagger + config.palette.master.stagger) * stagger
 			)
 		),
 		green : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.green.period + config.palette.green.offset + config.palette.master.offset +
-				(config.palette.green.stagger + config.palette.master.stagger) * (idx & 1)  
+				(config.palette.green.stagger + config.palette.master.stagger) * stagger
 			)
 		),
 		blue : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.blue.period + config.palette.blue.offset + config.palette.master.offset +
-				(config.palette.blue.stagger + config.palette.master.stagger) * (idx & 1)  
+				(config.palette.blue.stagger + config.palette.master.stagger) * stagger
 			)
 		),
 		alpha : 1
@@ -172,25 +191,25 @@ function mandelbrot(c, ci, config){
 				count++;
 			}
 	}
-
-	return count;
-
-// alternate return values for modified output
-
-//	return count + z - c + zi - ci;
-
-/*
-	let ang = rel_ang(c, ci, z, zi);
-	return Math.floor((accuracy / (count + 1)) * (1 + Math.sin(ang))) + count;
-*/
-
-/*	if(count <= accuracy){
-		return count;
-	}else{
-		let ang = rel_ang(c, ci, z, zi);
-		return Math.floor(accuracy  * (.5 + Math.sin(ang - count) / 2) + count >> 1);
+	var rval = {stagger : count & 1};
+	switch(config.options.calculationMethod){
+		case 'countPlusDisplacement':
+			rval.count = count + Math.sqrt((z - c) * (z - c) + (zi - ci) * (zi - ci));
+			break;
+		case 'countPlusDisplacementAngle':
+			var ang = rel_ang(c, ci, z, zi);
+			rval.count = (accuracy / (count + 1)) * (1 + Math.sin(ang)) + count;
+			break;
+		case 'countPlusAnglePlusRadius':
+			var ang = rel_ang(c, ci, z, zi);
+			let radius = Math.pow((z - c) * (z - c) + (zi - ci) * (zi - ci), .5);
+			rval.count = ((accuracy / (count + 1)) * (1 + Math.sin(ang))) + count + radius;
+			break;
+		default:
+			rval.count = count;
 	}
-*/
+
+	return rval;
 }
 
 // used for rendering images outside of the view area
@@ -206,12 +225,8 @@ function staticRender(targetCanvas, width, height, config, callback){
 		for(y = 0; y < targetCanvas.height; y++){
 			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
 
-			colour = mandelbrot(c, ci, config);
-			if(colour > config.map.accuracy){
-				colour = colourBlack;
-			}else{
-				colour = createColour(colour, config)
-			}
+			colour = createColour(mandelbrot(c, ci, config), config)
+
 			ctx.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
 			ctx.fillRect(x, y, 1, 1);
 
@@ -228,7 +243,7 @@ function render(){
 
 	var colour;
 	var count;
-
+	activeRendering = 1;
 	map = [];
 	for(x = 0; x < canvas.width; x++){
 		c =  config.map.x - config.map.width / 2 + x * config.map.width / canvas.width;
@@ -237,18 +252,15 @@ function render(){
 		for(y = 0; y < canvas.height; y++){
 			ci = config.map.y - config.map.height / 2 + y * config.map.height / canvas.height;
 			map[x][y] = mandelbrot(c, ci, config);
-			if(map[x][y] > config.map.accuracy){
-				colour = colourBlack;
-			}else{
-				colour = createColour(map[x][y], config)
-			}
+			colour = createColour(map[x][y], config)
 			putPixel(x, y, colour);
 
 		}
 	}
+	activeRendering = 0;
 }
 
-function refresh(){
+function redraw(){
 	var x, y, colour;
 	for(x = 0; x < canvas.width; x++){
 		for(y = 0; y < canvas.height; y++){
@@ -299,7 +311,7 @@ function updateFields(){
 	document.getElementById('width').value = config.map.width;
 	document.getElementById('accuracy').value = config.map.accuracy;
 	document.getElementById('numcolours').value = config.palette.colourWavePeriod;
-	
+
 	switch(config.options.endCondition){
 		case 'multiplication':
 			document.getElementById('endCondition3').checked = true;
@@ -310,6 +322,25 @@ function updateFields(){
 		default:
 			document.getElementById('endCondition1').checked = true;
 	}
+
+	switch(config.options.calculationMethod){
+		case 'countPlusDisplacement':
+			document.getElementById('calculationOption2').checked = true;
+			break;
+		case 'countPlusDisplacementAngle':
+			document.getElementById('calculationOption3').checked = true;
+			break;
+		case 'countPlusAnglePlusRadius':
+			document.getElementById('calculationOption4').checked = true;
+			break;
+		default:
+			document.getElementById('calculationOption1').checked = true;
+
+	}
+	if(config.options.staggerTiming == undefined){
+		config.options.staggerTiming = 'after';
+	}
+	document.getElementById('staggerApplication').value = config.options.staggerTiming;
 
 };
 
@@ -344,7 +375,7 @@ function deleteSavedLocation(idx){
 }
 
 function buildLoadButton(rendering, button){
-	
+
 	var n;
 	if(button == undefined){
 		button = document.createElement('div');
@@ -362,10 +393,7 @@ function buildLoadButton(rendering, button){
 		if(config.options == undefined){
 			config.options = {};
 		}
-		initPaletteAdjusters();
-
-		updateFields();
-		render();
+		refreshAll();
 	}
 	button.onmouseleave = function(){
 		var n;
@@ -435,11 +463,17 @@ function renderSavedLocations(){
 	}
 
 	let loadThumbnail = function(idx){
-		buildLoadButton(renderings[idx], button[idx]);
-		if(idx < numRenderings - 1){
-			setTimeout(function(){loadThumbnail(idx + 1);}, 100);
+		if(activeRendering){
+			// pause thumbnail rendering if the main window is
+			// currently rendering as well
+			setTimeout(function(){loadThumbnail(idx);}, 500);
 		}else{
-			header.removeChild(loadingSpan);
+			buildLoadButton(renderings[idx], button[idx]);
+			if(idx < numRenderings - 1){
+				setTimeout(function(){loadThumbnail(idx + 1);}, 100);
+			}else{
+				header.removeChild(loadingSpan);
+			}
 		}
 	}
 
@@ -505,12 +539,7 @@ function bgRender(targetCanvas, width, height, config, onComplete){
 			c =  config.map.x - config.map.width / 2 + x * config.map.width / width;
 			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
 
-			colour = mandelbrot(c, ci, config);
-			if(colour > config.map.accuracy){
-				colour = colourBlack;
-			}else{
-				colour = createColour(colour, config)
-			}
+			colour = createColour(mandelbrot(c, ci, config), config);
 			ctx.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
 			ctx.fillRect(x, y, 1, 1);
 
@@ -758,7 +787,7 @@ function initialize(step){
 			}else{
 				preferences = JSON.parse(preferences);
 			}
-			
+
 			setTimeout(function(){initialize('create canvas');}, 0);
 
 			tabinate(document.getElementById('paletteTabs'));
@@ -794,6 +823,8 @@ function initialize(step){
 			initFieldUpdates();
 			initPaletteAdjusters();
 			initModifiers();
+			document.getElementById('doubleAccuracy').onclick = function(){ multiplyAccuracy(2); }
+			document.getElementById('halveAccuracy').onclick = function(){ multiplyAccuracy(.5); }
 			setTimeout(function(){initialize('handle backwards compatability');}, 0);
 			break;
 		case 'handle backwards compatability':
@@ -849,6 +880,19 @@ function updateOldStoredData(){
 	// write the updates back to localStorage
 	localStorage.setItem('renderings', JSON.stringify(renderings));
 
+}
+
+// load the default presets and refresh
+function loadDefaults(){
+	config = JSON.parse(JSON.stringify(defaultConfig));
+	refreshAll();
+}
+
+
+function refreshAll(){
+	initPaletteAdjusters();
+	updateFields();
+	render();
 }
 
 
@@ -975,7 +1019,7 @@ function initFieldUpdates(){
 		}else{
 			config.palette.colourWavePeriod = 1 * this.value;
 			this.classList.remove('error');
-			refresh();
+			redraw();
 		}
 	}
 }
@@ -996,11 +1040,28 @@ function initModifiers() {
 		}
 	}
 
+	var calcMethods = document.getElementsByName('calcMethod');
+	for(let n = 0; n < calcMethods.length; n++){
+		calcMethods[n].onchange = function(){
+			config.options.calculationMethod = this.value;
+			render();
+		}
+
+	}
+
+	var staggerTiming = document.getElementById('staggerApplication');
+	staggerTiming.onchange = function(){
+		config.options.staggerTiming = this.value;
+		render();
+	}
+
 }
 
 // initialize the slidey widgets and text fields for the palette
 function initPaletteAdjusters(){
 	var n, c, elements = {};
+
+	// assemble the elements that we need to handle in an array for easy implementation
 	for(c of ['red', 'green', 'blue', 'master']){
 		elements[c] = {
 			offset: document.getElementById(c + 'Offset'),
@@ -1008,6 +1069,8 @@ function initPaletteAdjusters(){
 			stagger: document.getElementById(c + 'Stagger'),
 			staggerText: document.getElementById(c + 'StaggerText'),
 		}
+
+		// this separate if is needed because period has no "master" value
 		if(c != 'master'){
 			elements[c].period = document.getElementById(c + 'Period');
 			elements[c].periodText = document.getElementById(c + 'PeriodText');
@@ -1016,66 +1079,67 @@ function initPaletteAdjusters(){
 
 	for(n in elements){
 		(function(n){
-			if(config.palette[n] != undefined){
-				elements[n].offset.value = config.palette[n].offset;
-				elements[n].offsetText.value = config.palette[n].offset;
-				if(n != 'master'){
-					elements[n].period.value = config.palette[n].period;
-					elements[n].periodText.value = config.palette[n].period;
-				}
-			}else{
-				elements[n].offset.value = defaultConfig.palette[n].offset;
-				elements[n].offsetText.value = defaultConfig.palette[n].offset;
-				if(n != 'master'){
-					elements[n].period.value = defaultConfig.palette[n].period;
-					elements[n].periodText.value = defaultConfig.palette[n].period;
-				}
-
-				config.palette[n] = elements[n];
+			//////////// setting the offset values ///////////
+			elements[n].offset.value = config.palette[n].offset;
+			elements[n].offsetText.value = config.palette[n].offset;
+			if(n != 'master'){
+				elements[n].period.value = config.palette[n].period;
+				elements[n].periodText.value = config.palette[n].period;
 			}
+
+			// add slide widget event trigger
 			elements[n].offset.onchange = function(){
 				var val = 1 * this.value;
 				config.palette[n].offset = val;
 				elements[n].offsetText.value = val;
-				refresh();
+				redraw();
 			};
 
+			// add text field event trigger
 			elements[n].offsetText.onchange = function(){
 				var val = 1 * this.value;
 				config.palette[n].offset = val;
 				elements[n].offset.value = val;
-				refresh();
+				redraw();
 			};
 
+			//////////// setting the stagger values ///////////
 			elements[n].stagger.value = config.palette[n].stagger;
 			elements[n].staggerText.value = config.palette[n].stagger;
+
+			// add slide widget event trigger
 			elements[n].stagger.onchange = function(){
 				var val = 1 * this.value;
 				config.palette[n].stagger = val;
 				elements[n].staggerText.value = val;
-				refresh();
+				redraw();
 			};
 
+			// add text field event trigger
 			elements[n].staggerText.onchange = function(){
 				var val = 1 * this.value;
 				config.palette[n].stagger = val;
 				elements[n].stagger.value = val;
-				refresh();
+				redraw();
 			};
 
+			//////////// setting the period values ///////////
+			// we need the if because there is no "master" slider for wave period
 			if(elements[n].period != undefined){
+				// add the slide widget event trigger
 				elements[n].period.onchange = function(){
 					var val = 1 * this.value;
 					config.palette[n].period = val;
 					elements[n].periodText.value = val;
-					refresh();
+					redraw();
 				};
 
+				// add the text field event trigger
 				elements[n].periodText.onchange = function(){
 					var val = 1 * this.value;
 					config.palette[n].period = val;
 					elements[n].period.value = val;
-					refresh();
+					redraw();
 				}
 			}
 		})(n)

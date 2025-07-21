@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<script type="text/javascript" src="mandelbrot.js"></script>
-	<link rel="stylesheet" href="mandelbrot.css" />
+	<script type="text/javascript" src="mandelbrot.js?2"></script>
+	<link rel="stylesheet" href="mandelbrot.css?2" />
 	<link rel="icon" type="image" href="Mandelbrot.ico" />
 </head>
 <body>
@@ -21,8 +21,8 @@
 			</div><div>
 				<div style="float:right; display:inline-block">
 					<input type="number" id="accuracy" style="float:none; width:8.25em"/>
-					<div class="smallButton" id="doubleAccuracy" style="margin-right 0; margin-left: auto" onclick="multiplyAccuracy(2)">&times;2</div>
-					<div class="smallButton" id="halveAccuracy" style="margin-right 0; margin-left: auto" onclick="multiplyAccuracy(.5)">&divide;2</div>
+					<div class="smallButton" id="doubleAccuracy" style="margin-right 0; margin-left: auto">&times;2</div>
+					<div class="smallButton" id="halveAccuracy" style="margin-right 0; margin-left: auto">&divide;2</div>
 				</div>
 				Accuracy
 			</div>
@@ -34,6 +34,24 @@
 		<div id="modifiers" class="toolWrapper">
 			<h1>Modifiers</h1>
 			<div id="modifierTabs">
+				<div data-tab="Calculation">
+					<div>
+						<input type="radio" name="calcMethod" value="classic" id="calculationOption1" checked>
+						<label for="calculationOption1" selected>Iterations</label>
+					</div>
+					<div>
+						<input type="radio" name="calcMethod" value="countPlusDisplacement" id="calculationOption2">
+						<label for="calculationOption2" selected>Iterations + displacement</label>
+					</div>
+					<div>
+						<input type="radio" name="calcMethod" value="countPlusDisplacementAngle" id="calculationOption3">
+						<label for="calculationOption3" selected>Iterations + rotation</label>
+					</div>
+					<div>
+						<input type="radio" name="calcMethod" value="countPlusAnglePlusRadius" id="calculationOption4">
+						<label for="calculationOption4" selected>Iterations + rotation + displacement</label>
+					</div>
+				</div>
 				<div data-tab="End Condition">
 					<div>
 						<input type="radio" name="endCondition" value="addition" id="endCondition1" checked>
@@ -47,6 +65,16 @@
 						<input type="radio" name="endCondition" value="multiplication" id="endCondition3">
 						<label for="endCondition3">Multiplcation (z&#178; * zi&#178; &lt; 4)</label>
 					</div>
+				</div>
+				<div data-tab="Other">
+					 <div>
+						Apply stagger:
+						<select id="staggerApplication">
+							<option selected value='before'>Before Rot./Disp.</option>
+							<option value='after'>After Rot./Disp.</option>
+							<option value='both'>Both</option>
+						</select>
+					 </div>
 				</div>
 			</div>
 		</div>
@@ -139,6 +167,7 @@
 		<div class="button" onclick="exportImage()">Download Image</div>
 		<div class="button" onclick="saveLocation();">Save Parameters</div>
 		<div class="button" onclick="exportParameters();">Export Parameters</div>
+		<div class="button" onclick="loadDefaults();">Load Defaults</div>
 	</div>
 	<div id="savedWrapper">
 		<h1>Saved Renderings</h1>

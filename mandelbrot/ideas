@@ -1,8 +1,9 @@
 ideas
 
-- add UI components to toggle rendeing options that I currently enable by modifying the code
-- have a way of pausing the rendering of saved settings when rendering in the main display
-- give staggering a period cycle allowing it to vary with RGB
-- a reset button for the palette
+- Add a colour shift option that simply offsets the count when calculating
+  colour.  This should allow better palette cycling when using different wave
+  frequencies.
 - a way to save/reload the palette
-- add a "don't show this again" to the welcome prompt.
+- add a y-offset and amplitude to the colour waves
+- add a plotter showing the colour waves
+- integrate multiple palette control methods
