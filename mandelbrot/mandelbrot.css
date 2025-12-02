@@ -1,16 +1,30 @@
+.container {
+	display: grid; 
+	grid-template-columns: 1.5fr 1fr; 
+	grid-template-rows: 1fr .4fr; 
+	gap: 0px 0px; 
+	grid-template-areas: 
+		"renderArea toolArea"
+		"footerArea footerArea";
+	width: 960px;
+	margin:auto;
+}
+.renderArea { grid-area: renderArea; }
+.toolArea { grid-area: toolArea; }
+.footerArea { grid-area: footerArea; }
 body{
-	width: 262mm;
 	margin: auto;
 	padding-top: 1cm;
 	font-family: Arial;
 }
+
 #canvasWrapper{
 	margin: 0;
 	padding: 0;
 	width : 15cm;
-	height: 15cm;
-	display: inline-block;
+	height: 15.5cm;
 }
+/*
 #leftColumn{
 	margin: 0;
 	padding: 0;
@@ -23,7 +37,7 @@ body{
 	display: inline-block;
 	float: right;
 }
-
+*/
 #savedRenderings{
 	min-height: 3cm;
 	overflow-x: scroll;

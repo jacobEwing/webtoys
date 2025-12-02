@@ -1,5 +1,6 @@
 ideas
 
+- change the confirmation of saved rendering deletions to a proper windowy div, and add a "Don't ask again" checkbox.
 - Add a colour shift option that simply offsets the count when calculating
   colour.  This should allow better palette cycling when using different wave
   frequencies.
@@ -7,3 +8,5 @@ ideas
 - add a y-offset and amplitude to the colour waves
 - add a plotter showing the colour waves
 - integrate multiple palette control methods
+- allow loading saved render before the the thumbnail is ready
+- add an indicator when a render is happening.

@@ -6,187 +6,193 @@
 	<link rel="icon" type="image" href="Mandelbrot.ico" />
 </head>
 <body>
-	<div id="toolbox">
-		<div id="settings" class="toolWrapper">
-			<h1>Parameters</h1>
-			<div>
-				<input type="number" id="xOffset" tabindex="1"/>
-				X Coordinate 
-			</div><div>
-				<input type="number" id="yOffset" tabindex="2"/>
-				Y Coordinate
-			</div><div>
-				<input type="number" id="width" tabindex="3"/>
-				Zoom
-			</div><div>
-				<div style="float:right; display:inline-block">
-					<input type="number" id="accuracy" style="float:none; width:8.25em"/>
-					<div class="smallButton" id="doubleAccuracy" style="margin-right 0; margin-left: auto">&times;2</div>
-					<div class="smallButton" id="halveAccuracy" style="margin-right 0; margin-left: auto">&divide;2</div>
+	<div class="container">
+		<div class="renderArea" id="canvasWrapper"></div>
+		<div id="toolbox">
+			<div class=toolArea>
+				<div id="settings" class="toolWrapper">
+					<h1>Parameters</h1>
+					<div>
+						<input type="number" id="xOffset" tabindex="1"/>
+						X Coordinate 
+					</div><div>
+						<input type="number" id="yOffset" tabindex="2"/>
+						Y Coordinate
+					</div><div>
+						<input type="number" id="width" tabindex="3"/>
+						Zoom
+					</div><div>
+						<div style="float:right; display:inline-block">
+							<input type="number" id="accuracy" style="float:none; width:8.25em"/>
+							<div class="smallButton" id="doubleAccuracy" style="margin-right 0; margin-left: auto">&times;2</div>
+							<div class="smallButton" id="halveAccuracy" style="margin-right 0; margin-left: auto">&divide;2</div>
+						</div>
+						Max. Iterations 
+					</div>
+					<div style="margin-top: 0.5em; text-align:center;">
+						<div class="button" onclick="setTimeout(resetMandelbrot, 0)">Reset</div>
+					</div>
 				</div>
-				Max. Iterations 
-			</div>
-			<div style="margin-top: 0.5em; text-align:center;">
-				<div class="button" onclick="setTimeout(resetMandelbrot, 0)">Reset</div>
+
+				<div id="modifiers" class="toolWrapper">
+					<h1>Modifiers</h1>
+					<div id="modifierTabs">
+						<div data-tab="Calculation" id="calculationOptions">
+							<div>
+								<input type="checkbox" name="calculationIterations" id="calculationIterations" checked>
+								<label for="calculationIterations" selected>Iterations</label>
+							</div>
+							<div>
+								<input type="checkbox" name="calculationDisplacement" id="calculationDisplacement">
+								<label for="calculationDisplacement" selected>Displacement</label>
+							</div>
+							<div>
+								<input type="checkbox" name="calculationRotation" id="calculationRotation">
+								<label for="calculationRotation" selected>Rotation</label>
+							</div>
+							<div>
+								<input type="checkbox" name="calculationXORDisplacement" id="calculationXORDisplacement">
+								<label for="calculationXORDisplacement" selected>XOR'd displacement</label>
+							</div>
+							<div>
+								<input type="checkbox" name="calculationXORPolar" id="calculationXORPolar">
+								<label for="calculationXORPolar" selected>XOR'd polar displacement</label>
+							</div>
+						</div>
+						<div data-tab="End Condition">
+							<div>
+								<input type="radio" name="endCondition" value="addition" id="endCondition1" checked>
+								<label for="endCondition1" selected>Addition (z&#178; + zi&#178; &lt; 4)</label>
+							</div>
+							<div>
+								<input type="radio" name="endCondition" value="subtraction" id="endCondition2">
+								<label for="endCondition2" selected>Subtraction (z&#178; - zi&#178; &lt; 4)</label>
+							</div>
+							<div>
+								<input type="radio" name="endCondition" value="multiplication" id="endCondition3">
+								<label for="endCondition3">Multiplcation (z&#178; &times; zi&#178; &lt; 4)</label>
+							</div>
+							<div>
+								<input type="radio" name="endCondition" value="fluffyCloud" id="endCondition4">
+								<label for="endCondition3">Fluffy Cloud (|z| + |zi| &lt; 2)</label>
+							</div>
+							<div>
+								<input type="radio" name="endCondition" value="foliage" id="endCondition5">
+								<label for="endCondition3">Foliage (|z| - |zi| &lt; 2)</label>
+							</div>
+						</div>
+						<div data-tab="Other">
+							 <div>
+								Apply stagger:
+								<select id="staggerApplication">
+									<option selected value='before'>Before Rot./Disp.</option>
+									<option value='after'>After Rot./Disp.</option>
+									<option value='both'>Both</option>
+								</select>
+							 </div>
+						</div>
+					</div>
+				</div>
+
+				<div id="colourControl" class="toolWrapper">
+					<a href="javascript:;" class="infoButton" onclick="showPaletteInfo()">?</a>
+					<h1>Palette</h1>
+					<div id="paletteTabs">
+						<div data-tab="Offset">
+							<table>
+								<tr>
+									<td>Master</td>
+									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterOffset" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="masterOffsetText" class="colourText" tabindex="8"/></td>
+								</tr>
+								<tr>
+									<td>Red</td>
+									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="redOffset" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="redOffsetText" class="colourText" tabindex="9"/></td>
+								</tr>
+								<tr>
+									<td>Green</td>
+									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="greenOffset" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="greenOffsetText" class="colourText" tabindex="10"/></td>
+								</tr>
+								<tr>
+									<td>Blue</td>
+									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="blueOffset" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="blueOffsetText" class="colourText" tabindex="11"/></td>
+								</tr>
+							</table>
+						</div>
+
+						<div data-tab="Stagger">
+							<table>
+								<tr>
+									<td>Master</td>
+									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterStagger" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="masterStaggerText" class="colourText" tabindex="12"/></td>
+								</tr>
+								<tr>
+									<td>Red</td>
+									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="redStagger" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="redStaggerText" class="colourText" tabindex="13"/></td>
+								</tr>
+								<tr>
+									<td>Green</td>
+									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="greenStagger" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="greenStaggerText" class="colourText" tabindex="15"/></td>
+								</tr>
+								<tr>
+									<td>Blue</td>
+									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="blueStagger" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="blueStaggerText" class="colourText" tabindex="16"/></td>
+								</tr>
+							</table>
+						</div>
+						<div data-tab="Frequency Multiplier">
+							<table>
+								<tr>
+									<td>Red</td>
+									<td><input type="range" step=".01" min=".01" max="20" value="1" id="redPeriod" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="redPeriodText" class="colourText" tabindex="17"/></td>
+								</tr>
+								<tr>
+									<td>Green</td>
+									<td><input type="range" step=".01" min=".01" max="20" value="1" id="greenPeriod" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="greenPeriodText" class="colourText" tabindex="18"/></td>
+								</tr>
+								<tr>
+									<td>Blue</td>
+									<td><input type="range" step=".01" min=".01" max="20" value="1" id="bluePeriod" class="colourAdjuster"/></td>
+									<td class="shortTD"><input type="text" id="bluePeriodText" class="colourText" tabindex="19"/></td>
+								</tr>
+							</table>
+						</div>
+					</div>
+
+					<div style="margin-top: 0.25lh">
+						<span>Wave Period:</span>
+						<input type="number" id="numcolours" size="4" tabindex="7"/>
+					</div>
+				</div>
 			</div>
 		</div>
-
-		<div id="modifiers" class="toolWrapper">
-			<h1>Modifiers</h1>
-			<div id="modifierTabs">
-				<div data-tab="Calculation" id="calculationOptions">
-					<div>
-						<input type="checkbox" name="calculationIterations" id="calculationIterations" checked>
-						<label for="calculationIterations" selected>Iterations</label>
-					</div>
-					<div>
-						<input type="checkbox" name="calculationDisplacement" id="calculationDisplacement">
-						<label for="calculationDisplacement" selected>Displacement</label>
-					</div>
-					<div>
-						<input type="checkbox" name="calculationRotation" id="calculationRotation">
-						<label for="calculationRotation" selected>Rotation</label>
-					</div>
-					<div>
-						<input type="checkbox" name="calculationXORDisplacement" id="calculationXORDisplacement">
-						<label for="calculationXORDisplacement" selected>XOR'd displacement</label>
-					</div>
-					<div>
-						<input type="checkbox" name="calculationXORPolar" id="calculationXORPolar">
-						<label for="calculationXORPolar" selected>XOR'd polar displacement</label>
-					</div>
-				</div>
-				<div data-tab="End Condition">
-					<div>
-						<input type="radio" name="endCondition" value="addition" id="endCondition1" checked>
-						<label for="endCondition1" selected>Addition (z&#178; + zi&#178; &lt; 4)</label>
-					</div>
-					<div>
-						<input type="radio" name="endCondition" value="subtraction" id="endCondition2">
-						<label for="endCondition2" selected>Subtraction (z&#178; - zi&#178; &lt; 4)</label>
-					</div>
-					<div>
-						<input type="radio" name="endCondition" value="multiplication" id="endCondition3">
-						<label for="endCondition3">Multiplcation (z&#178; &times; zi&#178; &lt; 4)</label>
-					</div>
-					<div>
-						<input type="radio" name="endCondition" value="fluffyCloud" id="endCondition4">
-						<label for="endCondition3">Fluffy Cloud (|z| + |zi| &lt; 2)</label>
-					</div>
-					<div>
-						<input type="radio" name="endCondition" value="foliage" id="endCondition5">
-						<label for="endCondition3">Foliage (|z| - |zi| &lt; 2)</label>
-					</div>
-				</div>
-				<div data-tab="Other">
-					 <div>
-						Apply stagger:
-						<select id="staggerApplication">
-							<option selected value='before'>Before Rot./Disp.</option>
-							<option value='after'>After Rot./Disp.</option>
-							<option value='both'>Both</option>
-						</select>
-					 </div>
-				</div>
+		<!--
+		<div id="leftColumn">
+			<div id="canvasWrapper"></div>
+		</div>
+		-->
+		<div class="footerArea">
+			<div id="exports" class="toolWrapper">
+				<div class="button" onclick="exportImage()">Download Image</div>
+				<div class="button" onclick="saveLocation();">Save Parameters</div>
+				<div class="button" onclick="exportParameters();">Export Parameters</div>
+				<div class="button" onclick="loadDefaults();">Load Defaults</div>
+			</div>
+			<div id="savedWrapper">
+				<h1>Saved Renderings</h1>
+				<div id="savedRenderings"></div>
 			</div>
 		</div>
-
-		<div id="colourControl" class="toolWrapper">
-			<a href="javascript:;" class="infoButton" onclick="showPaletteInfo()">?</a>
-			<h1>Palette</h1>
-			<div id="paletteTabs">
-				<div data-tab="Offset">
-					<table>
-						<tr>
-							<td>Master</td>
-							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterOffset" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="masterOffsetText" class="colourText" tabindex="8"/></td>
-						</tr>
-						<tr>
-							<td>Red</td>
-							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="redOffset" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="redOffsetText" class="colourText" tabindex="9"/></td>
-						</tr>
-						<tr>
-							<td>Green</td>
-							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="greenOffset" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="greenOffsetText" class="colourText" tabindex="10"/></td>
-						</tr>
-						<tr>
-							<td>Blue</td>
-							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="blueOffset" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="blueOffsetText" class="colourText" tabindex="11"/></td>
-						</tr>
-					</table>
-				</div>
-
-				<div data-tab="Stagger">
-					<table>
-						<tr>
-							<td>Master</td>
-							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterStagger" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="masterStaggerText" class="colourText" tabindex="12"/></td>
-						</tr>
-						<tr>
-							<td>Red</td>
-							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="redStagger" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="redStaggerText" class="colourText" tabindex="13"/></td>
-						</tr>
-						<tr>
-							<td>Green</td>
-							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="greenStagger" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="greenStaggerText" class="colourText" tabindex="15"/></td>
-						</tr>
-						<tr>
-							<td>Blue</td>
-							<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="blueStagger" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="blueStaggerText" class="colourText" tabindex="16"/></td>
-						</tr>
-					</table>
-				</div>
-				<div data-tab="Frequency Multiplier">
-					<table>
-						<tr>
-							<td>Red</td>
-							<td><input type="range" step=".01" min=".01" max="20" value="1" id="redPeriod" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="redPeriodText" class="colourText" tabindex="17"/></td>
-						</tr>
-						<tr>
-							<td>Green</td>
-							<td><input type="range" step=".01" min=".01" max="20" value="1" id="greenPeriod" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="greenPeriodText" class="colourText" tabindex="18"/></td>
-						</tr>
-						<tr>
-							<td>Blue</td>
-							<td><input type="range" step=".01" min=".01" max="20" value="1" id="bluePeriod" class="colourAdjuster"/></td>
-							<td class="shortTD"><input type="text" id="bluePeriodText" class="colourText" tabindex="19"/></td>
-						</tr>
-					</table>
-				</div>
-			</div>
-
-			<div style="margin-top: 0.25lh">
-				<span>Wave Period:</span>
-				<input type="number" id="numcolours" size="4" tabindex="7"/>
-			</div>
-
-		</div>
 	</div>
-	<div id="leftColumn">
-		<div id="canvasWrapper"></div>
-	</div>
-	<div id="exports" class="toolWrapper">
-		<div class="button" onclick="exportImage()">Download Image</div>
-		<div class="button" onclick="saveLocation();">Save Parameters</div>
-		<div class="button" onclick="exportParameters();">Export Parameters</div>
-		<div class="button" onclick="loadDefaults();">Load Defaults</div>
-	</div>
-	<div id="savedWrapper">
-		<h1>Saved Renderings</h1>
-		<div id="savedRenderings"></div>
-	</div>
-
-
 	<!-- All content below here is used for pop-up dialogues -->
 	<div id="popupWrapper"></div>
 	<div id="temeplateWrapper" style="display:none">
