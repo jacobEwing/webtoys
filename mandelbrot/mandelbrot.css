@@ -87,6 +87,7 @@ div.previewButton{
 	background-image: repeating-linear-gradient(45deg, #eee 0, #eee 1px, transparent 0, transparent 50%);
 	background-size: 6px 6px;
 	background-color: #ccc;
+	height: 96px;
 }
 
 #settings > div input{

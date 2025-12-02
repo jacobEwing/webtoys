@@ -35,7 +35,7 @@ var loadButtonSize = 96;
 
 	For each primary colour, we have the values "offset", "stagger", and "period".
 
-	When building a colour, we take angle calculated from the count (see
+	When building a colour, we take the angle calculated from the count (see
 	colourWavePeriod above), and apply a sine function to it.  The exact function
 	is:
 		primaryValue = 127.5 + 127.5 * sin(angle * period + offset + stagger)
@@ -45,15 +45,13 @@ var loadButtonSize = 96;
 	below.
 
 	The "options" section is for custom modifiers of the fractal or the colour
-	selection.  As of this writing it only has options for the end condition on the
-	Mandelbrot loop, but will later have other options.
+	selection.
 
 */
-
 var defaultConfig = {
 	"map": {
-		"width": 4,
-		"height": 4,
+		"width": 4.1,
+		"height": 4.1,
 		"x": 0,
 		"y": 0,
 		"accuracy": 256
@@ -81,8 +79,14 @@ var defaultConfig = {
 		}
 	},
 	"options" : {
+		calculationFlags : {
+			iterations : 1,
+			displacement : 0,
+			rotation : 0,
+			displacementXOR : 0,
+			polarCoordXOR : 0
+		},
 		"endCondition" : "",
-		"calculationMethod" : "classic",
 		"staggerTiming": "before"
 	}
 }
@@ -91,25 +95,71 @@ var defaultPreferences = {
 	"showIntroduction" : 1
 }
 
-// generate a colour to match given index
+
+// This function takes the count, starting point, and ending point that was
+// calculated for a given pixel, and uses that to generate its colour based on the selected options.
 function createColour(countInfo, config){
 	if(countInfo.count >= config.map.accuracy){
 		return colourBlack;
 	}
 
-	var stagger;
-	switch(config.options.staggerTiming){
-		case 'after':
-			stagger = countInfo.count & 1 ? 1 : 0;
-			break;
-		case 'both':
-			stagger = (countInfo.count & 1 ? 1 : 0) + countInfo.stagger;
-			break;
-		default: // 'before'
-			stagger = countInfo.stagger;
+	var stagger = 0;
+	var count = 0;// = countInfo.count;
+	var ang = rel_ang(countInfo.c, countInfo.ci, countInfo.z, countInfo.zi);
+	var radius = Math.pow((countInfo.z - countInfo.c) * (countInfo.z - countInfo.c) + (countInfo.zi - countInfo.ci) * (countInfo.zi - countInfo.ci), .5);
 
+	// apply the stagger before applying displacement when appropriate
+	if(config.options.staggerTiming != 'after'){
+		stagger = countInfo.count & 1 ? 1 : 0;
 	}
-	let ang = countInfo.count * 2 * Math.PI / config.palette.colourWavePeriod;
+
+
+	// Apply the various uses of the count and displacement
+
+	// the basic iteration count
+	if(config.options.calculationFlags.iterations){
+		count += countInfo.count;
+	}
+
+	// displacement from starting point to end calculated point
+	if(config.options.calculationFlags.displacement){
+		if(count > 1) count += radius;
+	}
+
+	// end rotation of the calculated point
+	if(config.options.calculationFlags.rotation){
+		if(count > 1) count += (config.map.accuracy / (count + 1)) * (.5 + Math.sin(ang) / 2);
+	}
+
+	// apply the stagger after rotation and displacement, but before exclusive or's
+	if(config.options.staggerTiming != 'before'){
+		stagger += count & 1 ? 1 : 0;
+	}
+
+	// xor the x, y coordinates of the displacement and add the result
+	let coefficient = 10000;
+	if(config.options.calculationFlags.displacementXOR){
+		if(count > 1){
+			count += ((config.map.accuracy * (coefficient * countInfo.zi - coefficient * countInfo.ci)) ^ (config.map.accuracy * (coefficient * countInfo.z - coefficient * countInfo.c))) / (coefficient * config.map.accuracy);
+		}else{
+			// allow the xor pattern to apply outside of the 4x4 Mandelbrot area
+			count += ((coefficient * config.map.accuracy * countInfo.zi) ^ (coefficient * config.map.accuracy * countInfo.z)) / (coefficient * config.map.accuracy);
+		}
+	}
+
+	// xor the polar coordinates of the displacement and add the result
+	if(config.options.calculationFlags.polarCoordXOR){
+		if(count > 1){
+			count += ((coefficient * config.map.accuracy * ang) ^ (coefficient * config.map.accuracy * radius)) / (coefficient * config.map.accuracy);
+		}else{
+			// allow the xor pattern to apply outside of the 4x4 Mandelbrot area
+			count += ((countInfo.c * coefficient * config.map.accuracy) ^ (countInfo.ci * coefficient * config.map.accuracy)) / (coefficient * config.map.accuracy);
+		}
+		
+	}
+
+	// now put it all together with the sine wave functions for the count
+	ang = count * 2 * Math.PI / config.palette.colourWavePeriod;
 	return {
 		red : Math.round(127.5 + 127.5 * 
 			Math.sin(
@@ -145,9 +195,9 @@ function rel_ang(x1, y1, x2, y2){
 	}else if(y2 == y1){
 		alpha = (x2 < x1 ? 3 : 1) * Math.PI / 2
 	}else if(x2 > x1){
-		alpha = y2 == y1 ? 0 : Math.PI - Math.acos(deltay / hyp);
+		alpha = Math.PI - Math.acos(deltay / hyp);
 	}else if(x2 < x1){
-		alpha = y2 == y1 ? 0 : 2 * Math.PI - Math.acos(-deltay / hyp);
+		alpha = 2 * Math.PI - Math.acos(-deltay / hyp);
 	}
 
 	return alpha;
@@ -159,10 +209,7 @@ function mandelbrot(c, ci, config){
 	var z = 0, zi = 0, zsq = 0;
 	var zisq = 0;
 
-	/*  This ugly nesting of the loop inside the switch is for speed.  Previously,
-	 *  I used a case structure to define a function that determined the end
-	 *  condition. The use of that function increased the time required to render.
-	 *  Moving the loop into the select-case fixes that. */
+	// This ugly nesting of the loop inside the switch is for speed.
 	switch(config.options.endCondition){
 		case 'multiplication':
 			while(count <= accuracy && zsq * zisq < 4){
@@ -182,6 +229,24 @@ function mandelbrot(c, ci, config){
 				count++;
 			}
 			break;
+		case 'fluffyCloud':
+			while(count <= accuracy && Math.abs(z) + Math.abs(zi) < 2){
+				zi = z * zi * 2 + ci;
+				z = zsq - zisq + c;
+				zsq = z * z;
+				zisq = zi * zi;
+				count++;
+			}
+			break;
+		case 'foliage':
+			while(count <= accuracy && Math.abs(z) - Math.abs(zi) < 2){
+				zi = z * zi * 2 + ci;
+				z = zsq - zisq + c;
+				zsq = z * z;
+				zisq = zi * zi;
+				count++;
+			}
+			break;
 		default:
 			while(count <= accuracy && zsq + zisq < 4){
 				zi = z * zi * 2 + ci;
@@ -191,25 +256,14 @@ function mandelbrot(c, ci, config){
 				count++;
 			}
 	}
-	var rval = {stagger : count & 1};
-	switch(config.options.calculationMethod){
-		case 'countPlusDisplacement':
-			rval.count = count + Math.sqrt((z - c) * (z - c) + (zi - ci) * (zi - ci));
-			break;
-		case 'countPlusDisplacementAngle':
-			var ang = rel_ang(c, ci, z, zi);
-			rval.count = (accuracy / (count + 1)) * (1 + Math.sin(ang)) + count;
-			break;
-		case 'countPlusAnglePlusRadius':
-			var ang = rel_ang(c, ci, z, zi);
-			let radius = Math.pow((z - c) * (z - c) + (zi - ci) * (zi - ci), .5);
-			rval.count = ((accuracy / (count + 1)) * (1 + Math.sin(ang))) + count + radius;
-			break;
-		default:
-			rval.count = count;
-	}
 
-	return rval;
+	return {
+		count : count,
+		z : z,
+		zi : zi,
+		c : c,
+		ci : ci
+	};
 }
 
 // used for rendering images outside of the view area
@@ -313,6 +367,12 @@ function updateFields(){
 	document.getElementById('numcolours').value = config.palette.colourWavePeriod;
 
 	switch(config.options.endCondition){
+		case 'foliage':
+			document.getElementById('endCondition5').checked = true;
+			break;
+		case 'fluffyCloud':
+			document.getElementById('endCondition4').checked = true;
+			break;
 		case 'multiplication':
 			document.getElementById('endCondition3').checked = true;
 			break;
@@ -322,21 +382,13 @@ function updateFields(){
 		default:
 			document.getElementById('endCondition1').checked = true;
 	}
+	
+	document.getElementById('calculationIterations').checked = config.options.calculationFlags.iterations != 0;
+	document.getElementById('calculationDisplacement').checked = config.options.calculationFlags.displacement != 0;
+	document.getElementById('calculationRotation').checked = config.options.calculationFlags.rotation != 0;
+	document.getElementById('calculationXORDisplacement').checked = config.options.calculationFlags.displacementXOR != 0;
+	document.getElementById('calculationXORPolar').checked = config.options.calculationFlags.polarCoordXOR != 0;
 
-	switch(config.options.calculationMethod){
-		case 'countPlusDisplacement':
-			document.getElementById('calculationOption2').checked = true;
-			break;
-		case 'countPlusDisplacementAngle':
-			document.getElementById('calculationOption3').checked = true;
-			break;
-		case 'countPlusAnglePlusRadius':
-			document.getElementById('calculationOption4').checked = true;
-			break;
-		default:
-			document.getElementById('calculationOption1').checked = true;
-
-	}
 	if(config.options.staggerTiming == undefined){
 		config.options.staggerTiming = 'after';
 	}
@@ -772,75 +824,63 @@ function savePreferences(){
 }
 
 // The initial startup procedure
-function initialize(step){
-	if(step == undefined) step = 'initialize';
-	switch(step){
-		case 'initialize':
-			// load the default configuration
-			config = JSON.parse(JSON.stringify(defaultConfig));
+function initialize(){
+	// load the default configuration
+	config = JSON.parse(JSON.stringify(defaultConfig));
 
-			// get preferences
-			preferences = localStorage.getItem('preferences');
-			if(preferences == null){
-				preferences = JSON.parse(JSON.stringify(defaultPreferences));
-				savePreferences();
-			}else{
-				preferences = JSON.parse(preferences);
-			}
-
-			setTimeout(function(){initialize('create canvas');}, 0);
-
-			tabinate(document.getElementById('paletteTabs'));
-			tabinate(document.getElementById('modifierTabs'));
-
-			break;
-		case 'create canvas':
-			var canvasWrapper = document.getElementById('canvasWrapper');
-			canvas = document.createElement('canvas');
-			canvas.width = canvasWrapper.offsetWidth;
-			canvas.height = canvasWrapper.offsetHeight;
-			canvas.style.backgroundColor = '#000';
-			canvasWrapper.appendChild(canvas);
-
-
-			context = canvas.getContext('2d');
-
-			setTimeout(function(){initialize('initialize fractal');}, 0);
-			break;
-
-		case 'initialize fractal':
-			// make sure that our area rendered is the same proportions as the actual viewport
-			config.map.height = config.map.width * canvas.height / canvas.width;
-			render();
-			updateFields();
-			setTimeout(function(){initialize('add event triggers');}, 0);
-			break;
-
-		case 'add event triggers':
-			initMouseWheel();
-			initMouseDrag();
-			initMouseClick();
-			initFieldUpdates();
-			initPaletteAdjusters();
-			initModifiers();
-			document.getElementById('doubleAccuracy').onclick = function(){ multiplyAccuracy(2); }
-			document.getElementById('halveAccuracy').onclick = function(){ multiplyAccuracy(.5); }
-			setTimeout(function(){initialize('handle backwards compatability');}, 0);
-			break;
-		case 'handle backwards compatability':
-			updateOldStoredData();
-			setTimeout(function(){initialize('populate saved files');}, 0);
-			break;
-
-		case 'populate saved files':
-			if(preferences.showIntroduction == 1){
-				showWelcomeWindow();
-			}
-			renderSavedLocations();
-
-
-
+	// get preferences
+	preferences = localStorage.getItem('preferences');
+	if(preferences == null){
+		preferences = JSON.parse(JSON.stringify(defaultPreferences));
+		savePreferences();
+	}else{
+		preferences = JSON.parse(preferences);
 	}
+
+
+	tabinate(document.getElementById('paletteTabs'));
+	tabinate(document.getElementById('modifierTabs'));
+
+	// create the canvas
+	var canvasWrapper = document.getElementById('canvasWrapper');
+	canvas = document.createElement('canvas');
+	canvas.width = canvasWrapper.offsetWidth;
+	canvas.height = canvasWrapper.offsetHeight;
+	canvas.style.backgroundColor = '#000';
+	canvasWrapper.appendChild(canvas);
+
+
+	context = canvas.getContext('2d');
+
+
+	//initialize the fractal
+	// make sure that our area rendered is the same proportions as the actual viewport
+	config.map.height = config.map.width * canvas.height / canvas.width;
+	render();
+	updateFields();
+
+	// add event triggers
+	initMouseWheel();
+	initMouseDrag();
+	initMouseClick();
+	initFieldUpdates();
+	initPaletteAdjusters();
+	initModifiers();
+	document.getElementById('doubleAccuracy').onclick = function(){ multiplyAccuracy(2); }
+	document.getElementById('halveAccuracy').onclick = function(){ multiplyAccuracy(.5); }
+
+	// handle backwards compatability
+	updateOldStoredData();
+
+	// show the intro popup
+	if(preferences.showIntroduction == 1){
+		showWelcomeWindow();
+	}
+
+	// render the thumbnails
+	renderSavedLocations();
+
+
 }
 
 /* This function is used to handle backwards compatability with old saved
@@ -853,11 +893,9 @@ function updateOldStoredData(){
 
 
 	for(let n = 0; n < numRenderings; n++){
-		/***************
-		 * Account for old versions having "maxColourIndex" or having
-		 * "colourWavePeriod" stored with the mandelbrot info instead of the
-		 * palette info.
-		*/
+		// Account for old versions having "maxColourIndex" or having
+		// "colourWavePeriod" stored with the mandelbrot info instead of the
+		// palette info.
 		if(renderings[n].palette.colourWavePeriod == undefined){
 			if(renderings[n].map.colourWavePeriod != undefined){
 				renderings[n].palette.colourWavePeriod = renderings[n].map.colourWavePeriod;
@@ -874,8 +912,34 @@ function updateOldStoredData(){
 				renderings[n].palette[primary].period = 1;
 			}
 		}
+
+		// Handle the migration from distinct colour calculation types to separate boolean options for each modification
+		if(renderings[n].options.calculationFlags == undefined){
+			renderings[n].options.calculationFlags = JSON.parse(JSON.stringify(defaultConfig.options.calculationFlags));
+			if(renderings[n].options.calculationMethod != undefined){
+				switch(renderings[n].options.calculationMethod){
+					case 'countPlusDisplacement':
+						renderings[n].options.calculationFlags.displacement = 1;
+						break;
+					case 'countPlusDisplacementAngle':
+						renderings[n].options.calculationFlags.rotation = 1;
+						break;
+					case 'countPlusAnglePlusRadius':
+						renderings[n].options.calculationFlags.displacement = 1;
+						renderings[n].options.calculationFlags.rotation = 1;
+						break;
+					case 'countXORDisplacement':
+						renderings[n].options.calculationFlags.displacementXOR = 1;
+						break;
+					case 'classic':
+						// we just stick with the already set defaults
+						break;
+					default:
+						throw "updateOldStoredData: Unhandled configuration";
+				}
+			}
+		}
 	}
-	/****************/
 
 	// write the updates back to localStorage
 	localStorage.setItem('renderings', JSON.stringify(renderings));
@@ -1040,19 +1104,33 @@ function initModifiers() {
 		}
 	}
 
-	var calcMethods = document.getElementsByName('calcMethod');
-	for(let n = 0; n < calcMethods.length; n++){
-		calcMethods[n].onchange = function(){
-			config.options.calculationMethod = this.value;
-			render();
-		}
-
+//	var calcMethods = document.getElementsByName('calcMethod');
+	document.getElementById('calculationIterations').onchange = function(){
+		config.options.calculationFlags.iterations = this.checked ? 1 : 0;
+		redraw();
 	}
+	document.getElementById('calculationDisplacement').onchange = function(){
+		config.options.calculationFlags.displacement = this.checked ? 1 : 0;
+		redraw();
+	}
+	document.getElementById('calculationRotation').onchange = function(){
+		config.options.calculationFlags.rotation = this.checked ? 1 : 0;
+		redraw();
+	}
+	document.getElementById('calculationXORDisplacement').onchange = function(){
+		config.options.calculationFlags.displacementXOR = this.checked ? 1 : 0;
+		redraw();
+	}
+	document.getElementById('calculationXORPolar').onchange = function(){
+		config.options.calculationFlags.polarCoordXOR = this.checked ? 1 : 0;
+		redraw();
+	}
+
 
 	var staggerTiming = document.getElementById('staggerApplication');
 	staggerTiming.onchange = function(){
 		config.options.staggerTiming = this.value;
-		render();
+		redraw();
 	}
 
 }

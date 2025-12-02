@@ -17,14 +17,14 @@
 				Y Coordinate
 			</div><div>
 				<input type="number" id="width" tabindex="3"/>
-				Area Size
+				Zoom
 			</div><div>
 				<div style="float:right; display:inline-block">
 					<input type="number" id="accuracy" style="float:none; width:8.25em"/>
 					<div class="smallButton" id="doubleAccuracy" style="margin-right 0; margin-left: auto">&times;2</div>
 					<div class="smallButton" id="halveAccuracy" style="margin-right 0; margin-left: auto">&divide;2</div>
 				</div>
-				Accuracy
+				Max. Iterations 
 			</div>
 			<div style="margin-top: 0.5em; text-align:center;">
 				<div class="button" onclick="setTimeout(resetMandelbrot, 0)">Reset</div>
@@ -34,22 +34,26 @@
 		<div id="modifiers" class="toolWrapper">
 			<h1>Modifiers</h1>
 			<div id="modifierTabs">
-				<div data-tab="Calculation">
+				<div data-tab="Calculation" id="calculationOptions">
 					<div>
-						<input type="radio" name="calcMethod" value="classic" id="calculationOption1" checked>
-						<label for="calculationOption1" selected>Iterations</label>
+						<input type="checkbox" name="calculationIterations" id="calculationIterations" checked>
+						<label for="calculationIterations" selected>Iterations</label>
 					</div>
 					<div>
-						<input type="radio" name="calcMethod" value="countPlusDisplacement" id="calculationOption2">
-						<label for="calculationOption2" selected>Iterations + displacement</label>
+						<input type="checkbox" name="calculationDisplacement" id="calculationDisplacement">
+						<label for="calculationDisplacement" selected>Displacement</label>
 					</div>
 					<div>
-						<input type="radio" name="calcMethod" value="countPlusDisplacementAngle" id="calculationOption3">
-						<label for="calculationOption3" selected>Iterations + rotation</label>
+						<input type="checkbox" name="calculationRotation" id="calculationRotation">
+						<label for="calculationRotation" selected>Rotation</label>
 					</div>
 					<div>
-						<input type="radio" name="calcMethod" value="countPlusAnglePlusRadius" id="calculationOption4">
-						<label for="calculationOption4" selected>Iterations + rotation + displacement</label>
+						<input type="checkbox" name="calculationXORDisplacement" id="calculationXORDisplacement">
+						<label for="calculationXORDisplacement" selected>XOR'd displacement</label>
+					</div>
+					<div>
+						<input type="checkbox" name="calculationXORPolar" id="calculationXORPolar">
+						<label for="calculationXORPolar" selected>XOR'd polar displacement</label>
 					</div>
 				</div>
 				<div data-tab="End Condition">
@@ -63,7 +67,15 @@
 					</div>
 					<div>
 						<input type="radio" name="endCondition" value="multiplication" id="endCondition3">
-						<label for="endCondition3">Multiplcation (z&#178; * zi&#178; &lt; 4)</label>
+						<label for="endCondition3">Multiplcation (z&#178; &times; zi&#178; &lt; 4)</label>
+					</div>
+					<div>
+						<input type="radio" name="endCondition" value="fluffyCloud" id="endCondition4">
+						<label for="endCondition3">Fluffy Cloud (|z| + |zi| &lt; 2)</label>
+					</div>
+					<div>
+						<input type="radio" name="endCondition" value="foliage" id="endCondition5">
+						<label for="endCondition3">Foliage (|z| - |zi| &lt; 2)</label>
 					</div>
 				</div>
 				<div data-tab="Other">
@@ -132,7 +144,7 @@
 						</tr>
 					</table>
 				</div>
-				<div data-tab="Period">
+				<div data-tab="Frequency Multiplier">
 					<table>
 						<tr>
 							<td>Red</td>
@@ -196,7 +208,10 @@
 
 		<div id="introTemplate">
 			<h2>The Mandelbrot Explorer</h2>
-			<p>The purpose of this application is to let you explore the Mandelbrot Set in it's full glory, and allow you to play with the colours used to bring it to it's full beauty.</p>
+
+			<p>The purpose of this application is to let you explore the Mandelbrot Set and
+			play with the colours used, bringing it to its full beauty.</p>
+
 			<p>Here's a short hotlist of how you can interact directly with the image:</p>
 			<ul>
 				<li><strong>The mousewheel</strong> zooms in and out</li>
