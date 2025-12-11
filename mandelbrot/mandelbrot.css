@@ -24,20 +24,11 @@ body{
 	width : 15cm;
 	height: 15.5cm;
 }
-/*
-#leftColumn{
-	margin: 0;
-	padding: 0;
-	width : 15cm;
-	display: inline-block;
+
+#calculationOptions > table {
+	border-spacing: 0;
+	line-height: 0;
 }
-#toolbox{
-	width: 11cm;
-	height: 15cm;
-	display: inline-block;
-	float: right;
-}
-*/
 #savedRenderings{
 	min-height: 3cm;
 	overflow-x: scroll;

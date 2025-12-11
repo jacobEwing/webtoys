@@ -86,6 +86,13 @@ var defaultConfig = {
 			displacementXOR : 0,
 			polarCoordXOR : 0
 		},
+		coefficients : {
+			iterations : 1,
+			displacement : 1,
+			rotation : 1,
+			displacementXOR : 1,
+			polarCoordXOR : 1
+		},
 		"endCondition" : "",
 		"staggerTiming": "before"
 	}
@@ -104,31 +111,31 @@ function createColour(countInfo, config){
 	}
 
 	var stagger = 0;
-	var count = 0;// = countInfo.count;
+	var count = 0;
+	var dz = countInfo.z - countInfo.c;
+	var dzi = countInfo.zi - countInfo.ci;
 	var ang = rel_ang(countInfo.c, countInfo.ci, countInfo.z, countInfo.zi);
-	var radius = Math.pow((countInfo.z - countInfo.c) * (countInfo.z - countInfo.c) + (countInfo.zi - countInfo.ci) * (countInfo.zi - countInfo.ci), .5);
+	var radius = Math.pow(dz * dz + dzi * dzi, .5);
 
 	// apply the stagger before applying displacement when appropriate
 	if(config.options.staggerTiming != 'after'){
 		stagger = countInfo.count & 1 ? 1 : 0;
 	}
-
-
 	// Apply the various uses of the count and displacement
 
 	// the basic iteration count
 	if(config.options.calculationFlags.iterations){
-		count += countInfo.count;
+		count += countInfo.count * config.options.coefficients.iterations;
 	}
 
 	// displacement from starting point to end calculated point
 	if(config.options.calculationFlags.displacement){
-		if(count > 1) count += radius;
+		if(countInfo.count > 1) count += radius * config.options.coefficients.displacement;
 	}
 
 	// end rotation of the calculated point
 	if(config.options.calculationFlags.rotation){
-		if(count > 1) count += (config.map.accuracy / (count + 1)) * (.5 + Math.sin(ang) / 2);
+		if(countInfo.count > 1) count += (config.map.accuracy / (countInfo.count + 1)) * (.5 + Math.sin(ang) / 2) * config.options.coefficients.rotation;
 	}
 
 	// apply the stagger after rotation and displacement, but before exclusive or's
@@ -136,24 +143,26 @@ function createColour(countInfo, config){
 		stagger += count & 1 ? 1 : 0;
 	}
 
+	//stagger += Math.round(32 * radius) % 4 == 1  || Math.round(62.8 * ang) % 8 == 1;
+	//stagger += Math.abs(Math.floor(40 * dz)) % 10 < 2 || Math.abs(Math.floor(40 * dzi)) % 10 < 2;
+
 	// xor the x, y coordinates of the displacement and add the result
-	let coefficient = 10000;
 	if(config.options.calculationFlags.displacementXOR){
-		if(count > 1){
-			count += ((config.map.accuracy * (coefficient * countInfo.zi - coefficient * countInfo.ci)) ^ (config.map.accuracy * (coefficient * countInfo.z - coefficient * countInfo.c))) / (coefficient * config.map.accuracy);
+		if(countInfo.count > 1){
+			count += config.options.coefficients.displacementXOR * ((config.map.accuracy * (countInfo.zi - countInfo.ci)) ^ (config.map.accuracy * (countInfo.z - countInfo.c))) / (config.map.accuracy);
 		}else{
 			// allow the xor pattern to apply outside of the 4x4 Mandelbrot area
-			count += ((coefficient * config.map.accuracy * countInfo.zi) ^ (coefficient * config.map.accuracy * countInfo.z)) / (coefficient * config.map.accuracy);
+			count += config.options.coefficients.displacementXOR * ((config.map.accuracy * countInfo.zi) ^ (config.map.accuracy * countInfo.z)) / (config.map.accuracy);
 		}
 	}
 
 	// xor the polar coordinates of the displacement and add the result
 	if(config.options.calculationFlags.polarCoordXOR){
-		if(count > 1){
-			count += ((coefficient * config.map.accuracy * ang) ^ (coefficient * config.map.accuracy * radius)) / (coefficient * config.map.accuracy);
+		if(countInfo.count > 1){
+			count += config.options.coefficients.polarCoordXOR * ((config.map.accuracy * ang) ^ (config.map.accuracy * radius)) / (config.map.accuracy);
 		}else{
 			// allow the xor pattern to apply outside of the 4x4 Mandelbrot area
-			count += ((countInfo.c * coefficient * config.map.accuracy) ^ (countInfo.ci * coefficient * config.map.accuracy)) / (coefficient * config.map.accuracy);
+			count += config.options.coefficients.polarCoordXOR * ((countInfo.c * config.map.accuracy) ^ (countInfo.ci * config.map.accuracy)) / (config.map.accuracy);
 		}
 		
 	}
@@ -389,6 +398,13 @@ function updateFields(){
 	document.getElementById('calculationXORDisplacement').checked = config.options.calculationFlags.displacementXOR != 0;
 	document.getElementById('calculationXORPolar').checked = config.options.calculationFlags.polarCoordXOR != 0;
 
+	document.getElementById('iterationCoefficient').value = config.options.coefficients.iterations;
+	document.getElementById('displacementCoefficient').value = config.options.coefficients.displacement;
+	document.getElementById('rotationCoefficient').value = config.options.coefficients.rotation;
+	document.getElementById('displacementXORCoefficient').value = config.options.coefficients.displacementXOR;
+	document.getElementById('polarCoordXORCoefficient').value = config.options.coefficients.polarCoordXOR;
+
+
 	if(config.options.staggerTiming == undefined){
 		config.options.staggerTiming = 'after';
 	}
@@ -492,20 +508,6 @@ function renderSavedLocations(){
 	let numRenderings = Object.keys(renderings).length;
 	let button = [];
 
-	/*****************
-	I've added an "options" section to the config. This updates existing configs appropriately on load
-	*/
-	for(let n = 0; n < numRenderings; n++){
-		if(renderings[n].options == undefined){
-			renderings[n].options = JSON.parse(JSON.stringify(defaultConfig.options));
-		}
-	}
-	/*****************/
-
-	// write the updated modifications back to local storage
-	localStorage.setItem('renderings', JSON.stringify(renderings));
-
-
 	for(let n = 0; n  < numRenderings; n++){
 		button[n] = document.createElement('div');
 		button[n].classList.add('previewButton');
@@ -555,9 +557,7 @@ function exportParameters(){
 	let content = document.getElementById("exportParametersTemplate").cloneNode(true);
 	let textField = content.getElementsByTagName('textarea')[0];
 	let textContent = JSON.stringify(config, null, "\t");;
-	let numLines = textContent.split(/\r\n|\r|\n/).length
 
-	textField.style.height = numLines + 'lh';
 	textField.value = textContent;
 
 	popup(content, [{label : 'Close', action : closePopup}]);
@@ -939,6 +939,11 @@ function updateOldStoredData(){
 				}
 			}
 		}
+
+		// Add the new coefficients section in options
+		if(renderings[n].options.coefficients == undefined){
+			renderings[n].options.coefficients = JSON.parse(JSON.stringify(defaultConfig.options.coefficients));
+		}
 	}
 
 	// write the updates back to localStorage
@@ -1104,7 +1109,7 @@ function initModifiers() {
 		}
 	}
 
-//	var calcMethods = document.getElementsByName('calcMethod');
+	// initialize calculation options
 	document.getElementById('calculationIterations').onchange = function(){
 		config.options.calculationFlags.iterations = this.checked ? 1 : 0;
 		redraw();
@@ -1123,6 +1128,28 @@ function initModifiers() {
 	}
 	document.getElementById('calculationXORPolar').onchange = function(){
 		config.options.calculationFlags.polarCoordXOR = this.checked ? 1 : 0;
+		redraw();
+	}
+
+	// initialize their coefficients
+	document.getElementById('iterationCoefficient').onchange = function(){
+		config.options.coefficients.iterations = 1 * this.value;
+		redraw();
+	}
+	document.getElementById('displacementCoefficient').onchange = function(){
+		config.options.coefficients.displacement = 1 * this.value;
+		redraw();
+	}
+	document.getElementById('rotationCoefficient').onchange = function(){
+		config.options.coefficients.rotation = 1 * this.value;
+		redraw();
+	}
+	document.getElementById('displacementXORCoefficient').onchange = function(){
+		config.options.coefficients.displacementXOR = 1 * this.value;
+		redraw();
+	}
+	document.getElementById('polarCoordXORCoefficient').onchange = function(){
+		config.options.coefficients.polarCoordXOR = 1 * this.value;
 		redraw();
 	}
 

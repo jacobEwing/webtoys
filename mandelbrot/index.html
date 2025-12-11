@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<script type="text/javascript" src="mandelbrot.js?2"></script>
-	<link rel="stylesheet" href="mandelbrot.css?2" />
+	<script type="text/javascript" src="mandelbrot.js?3"></script>
+	<link rel="stylesheet" href="mandelbrot.css?3" />
 	<link rel="icon" type="image" href="Mandelbrot.ico" />
 </head>
 <body>
@@ -39,22 +39,27 @@
 					<div id="modifierTabs">
 						<div data-tab="Calculation" id="calculationOptions">
 							<div>
+								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="iterationCoefficient"></input></span>
 								<input type="checkbox" name="calculationIterations" id="calculationIterations" checked>
 								<label for="calculationIterations" selected>Iterations</label>
 							</div>
 							<div>
+								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="displacementCoefficient"></input></span>
 								<input type="checkbox" name="calculationDisplacement" id="calculationDisplacement">
 								<label for="calculationDisplacement" selected>Displacement</label>
 							</div>
 							<div>
+								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="rotationCoefficient"></input></span>
 								<input type="checkbox" name="calculationRotation" id="calculationRotation">
 								<label for="calculationRotation" selected>Rotation</label>
 							</div>
 							<div>
+								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="displacementXORCoefficient"></input></span>
 								<input type="checkbox" name="calculationXORDisplacement" id="calculationXORDisplacement">
 								<label for="calculationXORDisplacement" selected>XOR'd displacement</label>
 							</div>
 							<div>
+								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="polarCoordXORCoefficient"></input></span>
 								<input type="checkbox" name="calculationXORPolar" id="calculationXORPolar">
 								<label for="calculationXORPolar" selected>XOR'd polar displacement</label>
 							</div>
