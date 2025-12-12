@@ -79,22 +79,22 @@ var defaultConfig = {
 		}
 	},
 	"options" : {
-		calculationFlags : {
+		calculationFlags : {  // which data from the mandelbrot function will be used in determining the colour
 			iterations : 1,
 			displacement : 0,
 			rotation : 0,
 			displacementXOR : 0,
 			polarCoordXOR : 0
 		},
-		coefficients : {
+		coefficients : { // individual for the data used
 			iterations : 1,
 			displacement : 1,
 			rotation : 1,
 			displacementXOR : 1,
 			polarCoordXOR : 1
 		},
-		"endCondition" : "",
-		"staggerTiming": "before"
+		"endCondition" : "",// alternate ending conditions to the mandelbrot loop
+		"staggerTiming": "before" // a state to determine where in colour calculation a stagger gets added.
 	}
 }
 
@@ -514,6 +514,10 @@ function renderSavedLocations(){
 		button[n].style.width = loadButtonSize + 'px';
 		button[n].style.height = loadButtonSize + 'px';
 		target.append(button[n]);
+		button[n].onclick = function(){
+			config = JSON.parse(JSON.stringify(renderings[n]));
+			refreshAll();
+		}
 	}
 
 	let loadThumbnail = function(idx){

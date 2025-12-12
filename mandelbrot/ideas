@@ -8,5 +8,4 @@ ideas
 - add a y-offset and amplitude to the colour waves
 - add a plotter showing the colour waves
 - integrate multiple palette control methods
-- allow loading saved render before the the thumbnail is ready
 - add an indicator when a render is happening.
