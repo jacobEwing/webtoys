@@ -134,6 +134,7 @@
 									<td>Master</td>
 									<td><input type="range" step=".01" min="-3.14159" max="3.14159" value="0" id="masterStagger" class="colourAdjuster"/></td>
 									<td class="shortTD"><input type="text" id="masterStaggerText" class="colourText" tabindex="12"/></td>
+									<td class="shortTD" rowspan="4"><div class="button" onclick="editBitmask();">Edit<br/>Stagger<br/>Bitmask</div></td>
 								</tr>
 								<tr>
 									<td>Red</td>
@@ -269,6 +270,30 @@
 
 		<div id="progressBarTemplate" class="toolWrapper">
 			Rendering Download <a href="javascript:;" class="cancelButton">X</a>
+		</div>
+
+		<div id="editBitmaskTemplate">
+			<h1>Edit Stagger Bitmasks</h1>
+			<p>Each of the fields below can contain a set of 1's and 0's. These determine
+			when the given primary is staggered.  For example, if the red field has the
+			text '010' in it, then the red will be staggered on the second of every three
+			colours.  If you put '11001010' in a primary, that primary will be staggered on
+			the first, second, fifth, and seventh colours of every eight.</p>
+
+			<p>The default is "10", making the stagger happen on odd numbered counts for
+			all three primaries.</p>
+			<table style="margin: auto">
+				<tr>
+					<td>Red</td>
+					<td><input type="text" name="red"></td>
+				</tr><tr>
+					<td>Green</td>
+					<td><input type="text" name="green"></td>
+				</tr><tr>
+					<td>Blue</td>
+					<td><input type="text" name="blue"></td>
+				</tr>
+			</table>
 		</div>
 	</div>
 </body>

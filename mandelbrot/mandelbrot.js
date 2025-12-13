@@ -76,6 +76,11 @@ var defaultConfig = {
 		"master" : {
 			"offset": 0,
 			"stagger": 0
+		},
+		staggerMask : {
+			red : "10",
+			green : "10",
+			blue : "10"
 		}
 	},
 	"options" : {
@@ -110,17 +115,28 @@ function createColour(countInfo, config){
 		return colourBlack;
 	}
 
-	var stagger = 0;
+	var stagger = {
+		red : 0,
+		green : 0,
+		blue : 0
+	};
+
 	var count = 0;
 	var dz = countInfo.z - countInfo.c;
 	var dzi = countInfo.zi - countInfo.ci;
 	var ang = rel_ang(countInfo.c, countInfo.ci, countInfo.z, countInfo.zi);
 	var radius = Math.pow(dz * dz + dzi * dzi, .5);
+	var staggerMask = config.palette.staggerMask;
 
 	// apply the stagger before applying displacement when appropriate
 	if(config.options.staggerTiming != 'after'){
-		stagger = countInfo.count & 1 ? 1 : 0;
+		stagger = {
+			red : ((1 << (countInfo.count % staggerMask.red.length)) & parseInt(staggerMask.red, 2) ? 1 : 0),
+			green : ((1 << (countInfo.count % staggerMask.green.length)) & parseInt(staggerMask.green, 2) ? 1 : 0),
+			blue : ((1 << (countInfo.count % staggerMask.blue.length)) & parseInt(staggerMask.blue, 2) ? 1 : 0)
+		}
 	}
+
 	// Apply the various uses of the count and displacement
 
 	// the basic iteration count
@@ -140,11 +156,10 @@ function createColour(countInfo, config){
 
 	// apply the stagger after rotation and displacement, but before exclusive or's
 	if(config.options.staggerTiming != 'before'){
-		stagger += count & 1 ? 1 : 0;
+		stagger.red += ((1 << (count % staggerMask.red.length)) & parseInt(staggerMask.red, 2) ? 1 : 0);
+		stagger.green += ((1 << (count % staggerMask.green.length)) & parseInt(staggerMask.green, 2) ? 1 : 0);
+		stagger.blue += ((1 << (count % staggerMask.blue.length)) & parseInt(staggerMask.blue, 2) ? 1 : 0);
 	}
-
-	//stagger += Math.round(32 * radius) % 4 == 1  || Math.round(62.8 * ang) % 8 == 1;
-	//stagger += Math.abs(Math.floor(40 * dz)) % 10 < 2 || Math.abs(Math.floor(40 * dzi)) % 10 < 2;
 
 	// xor the x, y coordinates of the displacement and add the result
 	if(config.options.calculationFlags.displacementXOR){
@@ -173,19 +188,19 @@ function createColour(countInfo, config){
 		red : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.red.period + config.palette.red.offset + config.palette.master.offset +
-				(config.palette.red.stagger + config.palette.master.stagger) * stagger
+				(config.palette.red.stagger + config.palette.master.stagger) * stagger.red
 			)
 		),
 		green : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.green.period + config.palette.green.offset + config.palette.master.offset +
-				(config.palette.green.stagger + config.palette.master.stagger) * stagger
+				(config.palette.green.stagger + config.palette.master.stagger) * stagger.green 
 			)
 		),
 		blue : Math.round(127.5 + 127.5 * 
 			Math.sin(
 				ang * config.palette.blue.period + config.palette.blue.offset + config.palette.master.offset +
-				(config.palette.blue.stagger + config.palette.master.stagger) * stagger
+				(config.palette.blue.stagger + config.palette.master.stagger) * stagger.blue
 			)
 		),
 		alpha : 1
@@ -726,6 +741,39 @@ function exportImage(){
 	popup(content, buttons);
 }
 
+function editBitmask(){
+	var redField, greenField, blueField;
+	var div = popup(document.getElementById("editBitmaskTemplate").cloneNode(true), [
+		{
+			label : 'Apply',
+			action : function(){
+				config.palette.staggerMask.red = redField.value;
+				config.palette.staggerMask.green = greenField.value;
+				config.palette.staggerMask.blue = blueField.value;
+				redraw();
+				closePopup();
+			}
+		},
+		{
+			label : 'Cancel',
+			action : closePopup
+		}
+
+	]);
+
+	redField = div.querySelector('[name="red"]');
+	greenField = div.querySelector('[name="green"]');
+	blueField = div.querySelector('[name="blue"]');
+
+	for(let input of div.getElementsByTagName('input')){
+		input.value = config.palette.staggerMask[input.name];
+		input.addEventListener('input', function(){
+			this.value = this.value.replace(/[^0-1]/g, '');
+		});
+	}
+
+}
+
 function getNodePosition(element){
 	var i = 0;
 	while (element = element.previousElementSibling){
@@ -766,6 +814,7 @@ function popup(content, buttons){
 	}
 	popup.style.display = 'block';
 
+	return popup;
 }
 
 function closePopup(){
@@ -947,6 +996,11 @@ function updateOldStoredData(){
 		// Add the new coefficients section in options
 		if(renderings[n].options.coefficients == undefined){
 			renderings[n].options.coefficients = JSON.parse(JSON.stringify(defaultConfig.options.coefficients));
+		}
+
+		// Add the new stagger bitmask
+		if(renderings[n].palette.staggerMask == undefined){
+			renderings[n].palette.staggerMask = JSON.parse(JSON.stringify(defaultConfig.palette.staggerMask));
 		}
 	}
 
