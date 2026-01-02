@@ -99,7 +99,8 @@ var defaultConfig = {
 			polarCoordXOR : 1
 		},
 		"endCondition" : "",// alternate ending conditions to the mandelbrot loop
-		"staggerTiming": "before" // a state to determine where in colour calculation a stagger gets added.
+		"staggerTiming": "before", // a state to determine where in colour calculation a stagger gets added.
+		"recursionDepth" : 1
 	}
 }
 
@@ -111,7 +112,7 @@ var defaultPreferences = {
 // This function takes the count, starting point, and ending point that was
 // calculated for a given pixel, and uses that to generate its colour based on the selected options.
 function createColour(countInfo, config){
-	if(countInfo.count >= config.map.accuracy){
+	if(countInfo.count >= config.map.accuracy * config.options.recursionDepth){
 		return colourBlack;
 	}
 
@@ -227,11 +228,12 @@ function rel_ang(x1, y1, x2, y2){
 	return alpha;
 }
 
-function mandelbrot(c, ci, config){
+function mandelbrot(c, ci, config, iterations){
 	var accuracy = config.map.accuracy;
 	var count = 0;
 	var z = 0, zi = 0, zsq = 0;
 	var zisq = 0;
+	if(iterations == undefined) iterations = config.options.recursionDepth;
 
 	// This ugly nesting of the loop inside the switch is for speed.
 	switch(config.options.endCondition){
@@ -281,13 +283,23 @@ function mandelbrot(c, ci, config){
 			}
 	}
 
-	return {
+	var rval = {
 		count : count,
 		z : z,
 		zi : zi,
 		c : c,
 		ci : ci
 	};
+
+	if(iterations > 1){
+		let rval2 = mandelbrot(rval.c - rval.z, rval.zi - rval.ci, config, iterations - 1)
+		for(let n in rval){
+			rval[n] += rval2[n];
+		}
+	}
+
+
+	return rval;
 }
 
 // used for rendering images outside of the view area
@@ -302,8 +314,9 @@ function staticRender(targetCanvas, width, height, config, callback){
 
 		for(y = 0; y < targetCanvas.height; y++){
 			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
+			
+			colour = createColour(mandelbrot(c, ci, config), config);
 
-			colour = createColour(mandelbrot(c, ci, config), config)
 
 			ctx.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
 			ctx.fillRect(x, y, 1, 1);
@@ -423,7 +436,9 @@ function updateFields(){
 	if(config.options.staggerTiming == undefined){
 		config.options.staggerTiming = 'after';
 	}
+
 	document.getElementById('staggerApplication').value = config.options.staggerTiming;
+	document.getElementById('recursionDepth').value = config.options.recursionDepth;
 
 };
 
@@ -932,6 +947,19 @@ function initialize(){
 
 	// render the thumbnails
 	renderSavedLocations();
+/*
+	// some playing around if I want to put all of the components in windows
+	let renderWindow = new WinBox({
+		title: "Rendering", 
+		mount : document.getElementById("canvasWrapper"),
+		width: canvas.width + 'px', 
+		height: canvas.height + 'px',
+		scrollbars: false,
+		background: "#346"
+	});
+
+	renderWindow.body.style.overflow = "hidden"
+*/
 
 
 }
@@ -1002,7 +1030,13 @@ function updateOldStoredData(){
 		if(renderings[n].palette.staggerMask == undefined){
 			renderings[n].palette.staggerMask = JSON.parse(JSON.stringify(defaultConfig.palette.staggerMask));
 		}
+
+		// add the new recursion option
+		if(renderings[n].options.recursionDepth == undefined){
+			renderings[n].options.recursionDepth = 1;
+		}
 	}
+
 
 	// write the updates back to localStorage
 	localStorage.setItem('renderings', JSON.stringify(renderings));
@@ -1049,8 +1083,8 @@ function initMouseWheel(){
 					}
 					config.map.height = config.map.width *  canvas.height / canvas.width;
 
-					var clickX = e.pageX - canvas.offsetLeft;
-					var clickY = e.pageY - canvas.offsetTop;
+					var clickX = e.offsetX;//pageX - canvas.offsetLeft;
+					var clickY = e.offsetY;//pageY - canvas.offsetTop;
 
 					// offset so that the point under the mouse remains under the mouse
 					config.map.x = (clickX * oldWidth - clickX * config.map.width) / canvas.width - (oldWidth - config.map.width) / 2 + config.map.x;
@@ -1211,11 +1245,20 @@ function initModifiers() {
 		redraw();
 	}
 
-
+	// additional options
 	var staggerTiming = document.getElementById('staggerApplication');
 	staggerTiming.onchange = function(){
 		config.options.staggerTiming = this.value;
 		redraw();
+	}
+
+	var recursionDepth = document.getElementById('recursionDepth');
+	recursionDepth.onchange = function(){
+		let val = Math.floor(1 * this.value);
+		if(val < 1) val = 1;
+		this.value = val;
+		config.options.recursionDepth = val;
+		render();
 	}
 
 }
