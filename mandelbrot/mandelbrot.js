@@ -100,7 +100,7 @@ var defaultConfig = {
 		},
 		"endCondition" : "",// alternate ending conditions to the mandelbrot loop
 		"staggerTiming": "before", // a state to determine where in colour calculation a stagger gets added.
-		"recursionDepth" : 1
+		"recursionDepth" : 1 // if > 1 then the mandelbot function is applied to the end displacement of (c, ci) x - 1 times.
 	}
 }
 
@@ -110,7 +110,8 @@ var defaultPreferences = {
 
 
 // This function takes the count, starting point, and ending point that was
-// calculated for a given pixel, and uses that to generate its colour based on the selected options.
+// calculated for a given pixel, and uses that to generate its colour based on
+// the selected options.
 function createColour(countInfo, config){
 	if(countInfo.count >= config.map.accuracy * config.options.recursionDepth){
 		return colourBlack;
@@ -214,6 +215,7 @@ function rel_ang(x1, y1, x2, y2){
 	deltax = x2 - x1;
 	deltay = y2 - y1;
 	hyp = Math.sqrt(deltax * deltax + deltay * deltay);
+
 	/********* figure out the value for alpha *********/
 	if(x2 == x1){
 		alpha = y2 > y1 ? Math.PI : 0;
@@ -221,7 +223,7 @@ function rel_ang(x1, y1, x2, y2){
 		alpha = (x2 < x1 ? 3 : 1) * Math.PI / 2
 	}else if(x2 > x1){
 		alpha = Math.PI - Math.acos(deltay / hyp);
-	}else if(x2 < x1){
+	}else{
 		alpha = 2 * Math.PI - Math.acos(-deltay / hyp);
 	}
 
@@ -235,7 +237,7 @@ function mandelbrot(c, ci, config, iterations){
 	var zisq = 0;
 	if(iterations == undefined) iterations = config.options.recursionDepth;
 
-	// This ugly nesting of the loop inside the switch is for speed.
+	// This ugly nesting of the loop inside the switch is for speed, as checking the end condition each time is much slower
 	switch(config.options.endCondition){
 		case 'multiplication':
 			while(count <= accuracy && zsq * zisq < 4){
@@ -292,7 +294,7 @@ function mandelbrot(c, ci, config, iterations){
 	};
 
 	if(iterations > 1){
-		let rval2 = mandelbrot(rval.c - rval.z, rval.zi - rval.ci, config, iterations - 1)
+		let rval2 = mandelbrot(rval.z - rval.c, rval.zi - rval.ci, config, iterations - 1)
 		for(let n in rval){
 			rval[n] += rval2[n];
 		}
@@ -303,72 +305,79 @@ function mandelbrot(c, ci, config, iterations){
 }
 
 // used for rendering images outside of the view area
-function staticRender(targetCanvas, width, height, config, callback){
-	var x, y;
-	var c, ci
+function staticRender(targetCanvas, width, height, config){
+	var x, y, colour;
+	var c, cStart = config.map.x - config.map.width / 2;
+	var ci = config.map.y - config.map.height / 2;
+	var cInc = config.map.width / width;
+	var ciInc = config.map.height / height;
 
-	var colour;
-	var ctx = targetCanvas.getContext('2d');
-	for(x = 0; x < targetCanvas.width; x++){
-		c =  config.map.x - config.map.width / 2 + x * config.map.width / width;
+	var img = new ImageData(width, height);
+	var idx = 0;
 
-		for(y = 0; y < targetCanvas.height; y++){
-			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
+	for(y = 0; y < height; y++){
+		c = cStart;
+		for(x = 0; x < width; x++){
 			
 			colour = createColour(mandelbrot(c, ci, config), config);
 
-
-			ctx.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
-			ctx.fillRect(x, y, 1, 1);
+			img.data[idx++] = colour.red;
+			img.data[idx++] = colour.green;
+			img.data[idx++] = colour.blue;
+			img.data[idx++] = 255;
+			c += cInc;
 
 		}
+		ci += ciInc;
 	}
-	if(callback != undefined){
-		callback();
-	}
+
+	targetCanvas.getContext('2d').putImageData(img, 0, 0);
+	return img.data;
 }
 
 function render(){
 	var x, y;
-	var c, ci
+	var c = config.map.x - config.map.width / 2;
+	var ci, ciStart = config.map.y - config.map.height / 2;
+	var cInc = config.map.width / canvas.width;
+	var ciInc = config.map.height / canvas.height;
+	var colour, count;
 
-	var colour;
-	var count;
 	activeRendering = 1;
 	map = [];
+
+	// first calculate the value for each pixel
 	for(x = 0; x < canvas.width; x++){
-		c =  config.map.x - config.map.width / 2 + x * config.map.width / canvas.width;
 		map[x] = [];
 
-		for(y = 0; y < canvas.height; y++){
-			ci = config.map.y - config.map.height / 2 + y * config.map.height / canvas.height;
-			map[x][y] = mandelbrot(c, ci, config);
-			colour = createColour(map[x][y], config)
-			putPixel(x, y, colour);
+		ci = ciStart;
 
+		for(y = 0; y < canvas.height; y++){
+			map[x][y] = mandelbrot(c, ci, config);
+			ci += ciInc;
 		}
+		c += cInc;
 	}
+
+	redraw();
+
 	activeRendering = 0;
 }
 
 function redraw(){
 	var x, y, colour;
-	for(x = 0; x < canvas.width; x++){
-		for(y = 0; y < canvas.height; y++){
-			if(map[x][y] > config.map.accuracy){
-				colour = colourBlack;
-			}else{
-				colour = createColour(map[x][y], config)
-			}
-			putPixel(x, y, colour);
-
+	var img = new ImageData(canvas.width, canvas.height);
+	var idx = 0;
+	for(y = 0; y < canvas.height; y++){
+		for(x = 0; x < canvas.width; x++){
+			colour = createColour(map[x][y], config)
+			img.data[idx++] = colour.red;
+			img.data[idx++] = colour.green;
+			img.data[idx++] = colour.blue;
+			img.data[idx++] = 255;
 		}
 	}
-}
-
-function putPixel(x, y, colour){
-	context.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
-	context.fillRect(x, y, 1, 1);
+	context.putImageData(img, 0, 0);
 }
 
 function resetMandelbrot(){
@@ -442,8 +451,6 @@ function updateFields(){
 
 };
 
-
-/* file management */
 function saveLocation(){
 	var renderings;
 	if(localStorage.renderings == undefined){
@@ -475,16 +482,17 @@ function deleteSavedLocation(idx){
 function buildLoadButton(rendering, button){
 
 	var n;
-	if(button == undefined){
-		button = document.createElement('div');
-		button.classList.add('previewButton');
-	}
 	var cnvs = document.createElement('canvas');
 	cnvs.width = loadButtonSize;
 	cnvs.height = loadButtonSize;
 	staticRender(cnvs, cnvs.width, cnvs.height, rendering);
+
+	if(button == undefined){
+		button = document.createElement('div');
+		button.classList.add('previewButton');
+	}
+
 	button.appendChild(cnvs);
-	var data = {};
 
 	button.onclick = function(){
 		config = JSON.parse(JSON.stringify(rendering));
@@ -556,6 +564,7 @@ function renderSavedLocations(){
 			// currently rendering as well
 			setTimeout(function(){loadThumbnail(idx);}, 500);
 		}else{
+			console.log('*');
 			buildLoadButton(renderings[idx], button[idx]);
 			if(idx < numRenderings - 1){
 				setTimeout(function(){loadThumbnail(idx + 1);}, 100);
