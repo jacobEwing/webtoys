@@ -41,31 +41,50 @@
 					<h1>Modifiers</h1>
 					<div id="modifierTabs">
 						<div data-tab="Calculation" id="calculationOptions">
-							<div>
-								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="iterationCoefficient"></input></span>
-								<input type="checkbox" name="calculationIterations" id="calculationIterations" checked>
-								<label for="calculationIterations" selected>Iterations</label>
-							</div>
-							<div>
-								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="displacementCoefficient"></input></span>
-								<input type="checkbox" name="calculationDisplacement" id="calculationDisplacement">
-								<label for="calculationDisplacement" selected>Displacement</label>
-							</div>
-							<div>
-								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="rotationCoefficient"></input></span>
-								<input type="checkbox" name="calculationRotation" id="calculationRotation">
-								<label for="calculationRotation" selected>Rotation</label>
-							</div>
-							<div>
-								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="displacementXORCoefficient"></input></span>
-								<input type="checkbox" name="calculationXORDisplacement" id="calculationXORDisplacement">
-								<label for="calculationXORDisplacement" selected>XOR'd displacement</label>
-							</div>
-							<div>
-								<span style="float:right; width: 20%">&times; <input type="number" style="width: 60%" id="polarCoordXORCoefficient"></input></span>
-								<input type="checkbox" name="calculationXORPolar" id="calculationXORPolar">
-								<label for="calculationXORPolar" selected>XOR'd polar displacement</label>
-							</div>
+							<table>
+								<colgroup>
+									<col span="1" style="width: 80%;">
+									<col span="1" style="width: 20%;">
+								</colgroup>
+								<tbody>
+									<tr>
+										<td>
+											<input type="checkbox" name="calculationIterations" id="calculationIterations" checked>
+											<label for="calculationIterations">Iterations</label>
+										</td><td>
+											&times; <input type="number" style="width: 60%" id="iterationCoefficient"></input>
+										</td>
+									</tr><tr>
+										<td>
+											<input type="checkbox" name="calculationDisplacement" id="calculationDisplacement">
+											<label for="calculationDisplacement">Displacement</label>
+										</td><td>
+											&times; <input type="number" style="width: 60%" id="displacementCoefficient"></input>
+										</td>
+									</tr><tr>
+										<td>
+											<input type="checkbox" name="calculationRotation" id="calculationRotation">
+											<label for="calculationRotation" selected>Rotation</label>
+										</td><td>
+											&times; <input type="number" style="width: 60%" id="rotationCoefficient"></input>
+										</td>
+									</tr><tr>
+										<td>
+											<input type="checkbox" name="calculationXORDisplacement" id="calculationXORDisplacement">
+											<label for="calculationXORDisplacement" selected>XOR'd displacement</label>
+										</td><td>
+											&times; <input type="number" style="width: 60%" id="displacementXORCoefficient"></input>
+										</td>
+									</tr><tr>
+										<td>
+											<input type="checkbox" name="calculationXORPolar" id="calculationXORPolar">
+											<label for="calculationXORPolar" selected>XOR'd polar displacement</label>
+										</td><td>
+											&times; <input type="number" style="width: 60%" id="polarCoordXORCoefficient"></input>
+										</td>
+									</tr>
+								</tbody>
+							</table>
 						</div>
 						<div data-tab="End Condition">
 							<div>
