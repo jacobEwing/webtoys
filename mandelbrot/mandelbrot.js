@@ -133,9 +133,9 @@ function createColour(countInfo, config){
 	// apply the stagger before applying displacement when appropriate
 	if(config.options.staggerTiming != 'after'){
 		stagger = {
-			red : ((1 << (countInfo.count % staggerMask.red.length)) & parseInt(staggerMask.red, 2) ? 1 : 0),
-			green : ((1 << (countInfo.count % staggerMask.green.length)) & parseInt(staggerMask.green, 2) ? 1 : 0),
-			blue : ((1 << (countInfo.count % staggerMask.blue.length)) & parseInt(staggerMask.blue, 2) ? 1 : 0)
+			red : ((1 << (Math.abs(countInfo.count) % staggerMask.red.length)) & parseInt(staggerMask.red, 2) ? 1 : 0),
+			green : ((1 << (Math.abs(countInfo.count) % staggerMask.green.length)) & parseInt(staggerMask.green, 2) ? 1 : 0),
+			blue : ((1 << (Math.abs(countInfo.count) % staggerMask.blue.length)) & parseInt(staggerMask.blue, 2) ? 1 : 0)
 		}
 	}
 
@@ -158,9 +158,9 @@ function createColour(countInfo, config){
 
 	// apply the stagger after rotation and displacement, but before exclusive or's
 	if(config.options.staggerTiming != 'before'){
-		stagger.red += ((1 << (count % staggerMask.red.length)) & parseInt(staggerMask.red, 2) ? 1 : 0);
-		stagger.green += ((1 << (count % staggerMask.green.length)) & parseInt(staggerMask.green, 2) ? 1 : 0);
-		stagger.blue += ((1 << (count % staggerMask.blue.length)) & parseInt(staggerMask.blue, 2) ? 1 : 0);
+		stagger.red += ((1 << (Math.abs(count) % staggerMask.red.length)) & parseInt(staggerMask.red, 2) ? 1 : 0);
+		stagger.green += ((1 << (Math.abs(count) % staggerMask.green.length)) & parseInt(staggerMask.green, 2) ? 1 : 0);
+		stagger.blue += ((1 << (Math.abs(count) % staggerMask.blue.length)) & parseInt(staggerMask.blue, 2) ? 1 : 0);
 	}
 
 	// xor the x, y coordinates of the displacement and add the result
@@ -209,25 +209,25 @@ function createColour(countInfo, config){
 	};
 }
 
-// returns the clockwise angle between the vertical axis and the line (x1, y1)-(x2, y2)
+// returns the clockwise angle between the upward vertical axis and the line (x1, y1)-(x2, y2)
 function rel_ang(x1, y1, x2, y2){
-	var hyp, alpha, deltax, deltay;
+	var hyp, theta, deltax, deltay;
 	deltax = x2 - x1;
 	deltay = y2 - y1;
 	hyp = Math.sqrt(deltax * deltax + deltay * deltay);
 
-	/********* figure out the value for alpha *********/
+	/********* figure out the value for theta *********/
 	if(x2 == x1){
-		alpha = y2 > y1 ? Math.PI : 0;
+		theta = y2 > y1 ? Math.PI : 0;
 	}else if(y2 == y1){
-		alpha = (x2 < x1 ? 3 : 1) * Math.PI / 2
+		theta = (x2 < x1 ? 3 : 1) * Math.PI / 2
 	}else if(x2 > x1){
-		alpha = Math.PI - Math.acos(deltay / hyp);
+		theta = Math.PI - Math.acos(deltay / hyp);
 	}else{
-		alpha = 2 * Math.PI - Math.acos(-deltay / hyp);
+		theta = 2 * Math.PI - Math.acos(-deltay / hyp);
 	}
 
-	return alpha;
+	return theta;
 }
 
 function mandelbrot(c, ci, config, iterations){
@@ -293,7 +293,7 @@ function mandelbrot(c, ci, config, iterations){
 		ci : ci
 	};
 
-	if(iterations > 1){
+	if(iterations > 1 && (z != c || zi != ci)){
 		let rval2 = mandelbrot(rval.z - rval.c, rval.zi - rval.ci, config, iterations - 1)
 		for(let n in rval){
 			rval[n] += rval2[n];
@@ -479,7 +479,7 @@ function deleteSavedLocation(idx){
 
 }
 
-function buildLoadButton(rendering, button){
+function buildLoadButton(rendering, options){
 
 	var n;
 	var cnvs = document.createElement('canvas');
@@ -487,9 +487,13 @@ function buildLoadButton(rendering, button){
 	cnvs.height = loadButtonSize;
 	staticRender(cnvs, cnvs.width, cnvs.height, rendering);
 
-	if(button == undefined){
+	var button;
+	if(options == undefined) options = {};
+	if(options.button == undefined){
 		button = document.createElement('div');
 		button.classList.add('previewButton');
+	}else{
+		button = options.button;
 	}
 
 	button.appendChild(cnvs);
@@ -507,23 +511,37 @@ function buildLoadButton(rendering, button){
 			n.parentElement.removeChild(n);
 		}
 	}
-	button.onmouseenter = function(){
-		if(this.querySelectorAll('.deleteIcon').length > 0) return;
-		var deleteButton = document.createElement('div');
-		deleteButton.classList.add('deleteIcon');
-		deleteButton.innerHTML = 'x';
-		button.prepend(deleteButton);
 
-		deleteButton.onclick = function(e){
-			if(confirm("are you sure want to delete this rendering?")){
-				deleteSavedLocation(getNodePosition(button));
-				button.parentNode.removeChild(button);
+	if(!options.noDelete){
+		button.onmouseenter = function(){
+			if(this.querySelectorAll('.deleteIcon').length > 0) return;
+			var deleteButton = document.createElement('div');
+			deleteButton.classList.add('deleteIcon');
+			deleteButton.innerHTML = 'x';
+			button.prepend(deleteButton);
+
+			deleteButton.onclick = function(e){
+				if(confirm("are you sure want to delete this rendering?")){
+					deleteSavedLocation(getNodePosition(button));
+					button.parentNode.removeChild(button);
+				}
+				e.stopPropagation();
 			}
-			e.stopPropagation();
-		}
 
+		}
 	}
 	return button;
+}
+
+async function renderSampleLocations(){
+	let file = await fetch('samples.json');
+	let samples = JSON.parse(await file.text());
+
+	for(let n in samples){
+		document.getElementById('demos').appendChild(buildLoadButton(samples[n], {noDelete : true}));
+	}
+
+
 }
 
 function renderSavedLocations(){
@@ -536,12 +554,6 @@ function renderSavedLocations(){
 	}
 
 	let target = document.getElementById('savedRenderings');
-	let header = target.parentElement.querySelector('h1');
-	let loadingSpan = document.createElement('span');
-	loadingSpan.innerHTML = '(loading...)';
-	loadingSpan.classList.add('loadingSpan');
-
-	header.appendChild(loadingSpan);
 
 	let numRenderings = Object.keys(renderings).length;
 	let button = [];
@@ -564,12 +576,9 @@ function renderSavedLocations(){
 			// currently rendering as well
 			setTimeout(function(){loadThumbnail(idx);}, 500);
 		}else{
-			console.log('*');
-			buildLoadButton(renderings[idx], button[idx]);
+			buildLoadButton(renderings[idx], {button : button[idx]});
 			if(idx < numRenderings - 1){
-				setTimeout(function(){loadThumbnail(idx + 1);}, 100);
-			}else{
-				header.removeChild(loadingSpan);
+				setTimeout(function(){loadThumbnail(idx + 1);}, 10);
 			}
 		}
 	}
@@ -626,6 +635,8 @@ function bgRender(targetCanvas, width, height, config, onComplete){
 	var cancelButton = progressBar.querySelector('a');
 	cancelButton.onclick = function(){ cancelled = true; };
 
+	var img = new ImageData(width, height);
+
 	var renderSegment = function(){
 		var n;
 		for(n = idx; n < area && n < idx + chunkSize; n++){
@@ -635,9 +646,11 @@ function bgRender(targetCanvas, width, height, config, onComplete){
 			ci = config.map.y - config.map.height / 2 + y * config.map.height / height;
 
 			colour = createColour(mandelbrot(c, ci, config), config);
-			ctx.fillStyle = 'rgb(' + colour.red + ', ' + colour.green + ', ' + colour.blue + ')';
-			ctx.fillRect(x, y, 1, 1);
 
+			img.data[(n << 2) + 0] = colour.red;
+			img.data[(n << 2) + 1] = colour.green;
+			img.data[(n << 2) + 2] = colour.blue;
+			img.data[(n << 2) + 3] = 255;
 		}
 		idx = n;
 		if(cancelled == true){
@@ -646,6 +659,7 @@ function bgRender(targetCanvas, width, height, config, onComplete){
 			progressBar.style.background = "linear-gradient(90deg, rgba(48, 107, 255, 1) " + Math.round(100 * idx / area) + "%, rgba(0, 0, 0, 0) 0%)";
 			setTimeout(renderSegment, 1);
 		}else{
+			ctx.putImageData(img, 0, 0);
 			progressBar.remove();
 			onComplete();
 		}
@@ -917,6 +931,7 @@ function initialize(){
 
 	tabinate(document.getElementById('paletteTabs'));
 	tabinate(document.getElementById('modifierTabs'));
+	tabinate(document.getElementById('footerTabs'));
 
 	// create the canvas
 	var canvasWrapper = document.getElementById('canvasWrapper');
@@ -943,8 +958,6 @@ function initialize(){
 	initFieldUpdates();
 	initPaletteAdjusters();
 	initModifiers();
-	document.getElementById('doubleAccuracy').onclick = function(){ multiplyAccuracy(2); }
-	document.getElementById('halveAccuracy').onclick = function(){ multiplyAccuracy(.5); }
 
 	// handle backwards compatability
 	updateOldStoredData();
@@ -956,6 +969,7 @@ function initialize(){
 
 	// render the thumbnails
 	renderSavedLocations();
+	renderSampleLocations();
 /*
 	// some playing around if I want to put all of the components in windows
 	let renderWindow = new WinBox({

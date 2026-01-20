@@ -1,88 +1,104 @@
-.container {
-	display: grid; 
-	grid-template-columns: 1.5fr 1fr; 
-	grid-template-rows: 1fr .4fr; 
-	gap: 0px 0px; 
-	grid-template-areas: 
-		"renderArea toolArea"
-		"footerArea footerArea";
+
+.container{
+	display: flex;
+	flex-direction: column;
+	flex-wrap: nowrap;
+	justify-content: center;
 	width: 960px;
-	margin:auto;
+	min-width: 960px;
 }
-.renderArea { grid-area: renderArea; }
-.toolArea { grid-area: toolArea; }
-.footerArea { grid-area: footerArea; }
+#mainArea{
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	justify-content: center;
+}
+
+#footerArea {
+	margin-top: 1mm;
+}
+
+#footerTabs > * {
+	width: 958px;
+}
+
 body{
 	margin: auto;
 	padding-top: 1cm;
 	font-family: Arial;
+	display:flex;
+	justify-content: center;
+}
+
+a {
+	text-decoration: none;
+	color: inherit;
 }
 
 #canvasWrapper{
 	margin: 0;
 	padding: 0;
-	width : 15cm;
-	height: 15.5cm;
+	width : 16cm;
+	height: 15.7cm;
 }
 
 #calculationOptions > table {
 	border-spacing: 0;
 	line-height: 0;
 }
-#savedRenderings{
+
+.sideThumbnailScrolling{
 	min-height: 3cm;
 	overflow-x: scroll;
-}
-#savedWrapper{
 	border-radius: 2mm;
 	padding: 1mm;
-	box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
 	white-space: nowrap;
 	cursor: pointer;
 	position: relative;
-	overflow: hidden;
 }
 
-#leftColumn > *{
-	margin-bottom: 2mm;
+.toolArea {
+	margin-left: 1mm;
 }
 
 div.toolWrapper{
-	margin: auto;
-	padding: 2mm;
-	margin-bottom: 2mm;
-	line-height: 1.5em;
-	border-radius: 2mm;
-	box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+	margin: 0 0 1mm 0;
+	padding: 1mm;
+	line-height: 1.4em;
+	border-radius: 1mm;
+	border: 1px solid #ccc;
+	background-color: #f8fafd;
 }
 
-div.button{
+
+a.button {
+	padding: 2mm;
+}
+.button{
 	cursor:pointer;
 	white-space: nowrap;
 	display: inline-block;
-	border-radius: 2mm;
+	border-radius: .5mm;
 	padding: 1mm;
+	background-color: #FFF;
+	box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 1px 3px 1px;
+	text-decoration: none;
+	color: #000;
+	text-align: center;
+}
+
+#popupWrapper > .button {
 	margin: 0mm 1mm;
-	background-color: #FFF;
-	box-shadow: rgb(50 50 93 / 25%) 0px 50px 100px -20px, rgb(0 0 0 / 30%) 0px 30px 60px -30px, rgb(10 37 64 / 35%) 0px -2px 6px 0px inset;
 }
 
-div.button:active{
+.button:active{
 	box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
 }
 
-div.smallButton{
-	white-space: nowrap;
-	display: inline-block;
-	border-radius: 2mm;
-	padding: 0 1em;
-	background-color: #FFF;
-	font-size: small;
-	box-shadow: rgb(50 50 93 / 25%) 0px 50px 100px -20px, rgb(0 0 0 / 30%) 0px 30px 60px -30px, rgb(10 37 64 / 35%) 0px -2px 6px 0px inset;
-}
-
-div.smallButton:active{
-	box-shadow: rgba(50, 50, 93, 0.25) 0px 30px 60px -12px inset, rgba(0, 0, 0, 0.3) 0px 18px 36px -18px inset;
+.multiplierButton{
+	box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 1px 3px 1px;
+	padding: 2px 6px;
+	
 }
 
 div.previewButton{

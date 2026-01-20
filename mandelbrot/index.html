@@ -10,8 +10,8 @@
 </head>
 <body>
 	<div class="container">
-		<div class="renderArea" id="canvasWrapper"></div>
-		<div id="toolbox">
+		<div id="mainArea">
+			<div class="renderArea" id="canvasWrapper"></div>
 			<div class=toolArea>
 				<div id="settings" class="toolWrapper">
 					<h1>Parameters</h1>
@@ -23,12 +23,12 @@
 						Y Coordinate
 					</div><div>
 						<input type="number" id="width" tabindex="3"/>
-						Zoom
+						Scale	
 					</div><div>
 						<div style="float:right; display:inline-block">
-							<input type="number" id="accuracy" style="float:none; width:7.05em"/>
-							<div class="smallButton" id="doubleAccuracy" style="margin-right 0; margin-left: auto">&times;2</div>
-							<div class="smallButton" id="halveAccuracy" style="margin-right 0; margin-left: auto">&divide;2</div>
+							<input type="number" id="accuracy" style="float:none; width:9.15em"/>
+							<a class="multiplierButton" href="javascript:multiplyAccuracy(2);" id="doubleAccuracy">&times;2</a>
+							<a class="multiplierButton" href="javascript:multiplyAccuracy(.5);">&divide;2</a>
 						</div>
 						Max. Iterations 
 					</div>
@@ -99,7 +99,7 @@
 								</select>
 							 </div>
 							 <div>
-							 	<label for="recursionDepth">Recursion Depth: </label>
+								<label for="recursionDepth">Recursion Depth: </label>
 								<input type="number" id="recursionDepth" style="width: 3ch">
 							 </div>
 						</div>
@@ -186,23 +186,22 @@
 						<input type="number" id="numcolours" size="4" tabindex="7"/>
 					</div>
 				</div>
+				<div id="exports" class="toolWrapper">
+					<a class="button" href="javascript:;" onclick="exportImage()">Download</a>
+					<a class="button" href="javascript:;" onclick="saveLocation();">Save</a>
+					<a class="button" href="javascript:;" onclick="exportParameters();">Export</a>
+					<a class="button" href="javascript:;" onclick="loadDefaults();">Reset</a>
+				</div>
 			</div>
 		</div>
-		<!--
-		<div id="leftColumn">
-			<div id="canvasWrapper"></div>
-		</div>
-		-->
-		<div class="footerArea">
-			<div id="exports" class="toolWrapper">
-				<div class="button" onclick="exportImage()">Download Image</div>
-				<div class="button" onclick="saveLocation();">Save Parameters</div>
-				<div class="button" onclick="exportParameters();">Export Parameters</div>
-				<div class="button" onclick="loadDefaults();">Load Defaults</div>
-			</div>
-			<div id="savedWrapper">
-				<h1>Saved Renderings</h1>
-				<div id="savedRenderings"></div>
+		<div id="footerArea">
+			<div id="footerTabs">
+				<div id="savedWrapper" data-tab="Saved Renderings">
+					<div class="sideThumbnailScrolling" id="savedRenderings"></div>
+				</div>
+				<div id="demosWrapper" data-tab="Samples">
+					<div class="sideThumbnailScrolling" id="demos"></div>
+				</div>
 			</div>
 		</div>
 	</div>
