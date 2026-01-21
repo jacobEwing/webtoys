@@ -534,7 +534,7 @@ function buildLoadButton(rendering, options){
 }
 
 async function renderSampleLocations(){
-	let file = await fetch('samples.json');
+	let file = await fetch('samples.json?' + Math.floor(Math.random() * 1000000));
 	let samples = JSON.parse(await file.text());
 
 	for(let n in samples){
@@ -630,7 +630,7 @@ function bgRender(targetCanvas, width, height, config, onComplete){
 
 	var progressBar = document.getElementById('progressBarTemplate').cloneNode(true);
 	progressBar.style.background = "linear-gradient(90deg, rgba(48, 107, 255, 1) 0%, rgba(0, 0, 0, 0) 0%)";
-	document.body.appendChild(progressBar);
+	document.getElementById("footerArea").appendChild(progressBar);
 
 	var cancelButton = progressBar.querySelector('a');
 	cancelButton.onclick = function(){ cancelled = true; };

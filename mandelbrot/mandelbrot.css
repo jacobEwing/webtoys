@@ -61,8 +61,12 @@ a {
 	margin-left: 1mm;
 }
 
+
+.toolWrapper:not(:first-child) {
+	margin-top: 1mm;
+}
+
 div.toolWrapper{
-	margin: 0 0 1mm 0;
 	padding: 1mm;
 	line-height: 1.4em;
 	border-radius: 1mm;
@@ -119,6 +123,7 @@ div.previewButton{
 input.error{
 	background-color: #FAA;
 }
+
 h1{
 	display: block;
 	height: 1.2em;

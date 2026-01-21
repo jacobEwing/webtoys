@@ -113,31 +113,31 @@
 	},
 	"sample3" : {
 		"map": {
-			"width": 6e-9,
-			"height": 6e-9,
-			"x": 0.3222325512098711,
-			"y": -0.5119755571459927,
+			"width": 7.933162291199969e-11,
+			"height": 7.933162291199969e-11,
+			"x": 0.3753898064442957,
+			"y": 0.24557353653222655,
 			"accuracy": 8192
 		},
 		"palette": {
-			"colourWavePeriod": 4096,
+			"colourWavePeriod": 8192,
 			"red": {
-				"offset": 1.44841,
+				"offset": -0.67159,
 				"stagger": 0,
 				"period": 1
 			},
 			"green": {
-				"offset": 1.59841,
+				"offset": -0.15159,
 				"stagger": 0,
 				"period": 1
 			},
 			"blue": {
-				"offset": 1.88841,
+				"offset": 0.19841,
 				"stagger": 0,
 				"period": 1
 			},
 			"master": {
-				"offset": 1.04841,
+				"offset": -1.72159,
 				"stagger": 0
 			},
 			"staggerMask": {
@@ -147,7 +147,9 @@
 			}
 		},
 		"options": {
-			"endCondition": "multiplication",
+			"endCondition": "",
+			"calculationMethod": "classic",
+			"staggerTiming": "both",
 			"calculationFlags": {
 				"iterations": 1,
 				"displacement": 0,
@@ -162,8 +164,7 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1,
-			"staggerTiming": "after"
+			"recursionDepth": 1
 		}
 	},
 	"sample4" : {
@@ -271,7 +272,7 @@
 			"coefficients": {
 				"iterations": 1,
 				"displacement": 1,
-				"rotation": 1,
+				"rotation": 4,
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
@@ -392,32 +393,32 @@
 	},
 	"sample8": {
 		"map": {
-			"width": 3.966581145599981e-12,
-			"height": 3.966581145599981e-12,
-			"x": 0.32859384646656137,
-			"y": -0.5332258764744658,
-			"accuracy": 16384
+			"width": 3e-10,
+			"height": 3e-10,
+			"x": -1.749981786227372,
+			"y": -5.819914817495705e-7,
+			"accuracy": 32768
 		},
 		"palette": {
-			"colourWavePeriod": 64,
+			"colourWavePeriod": 4096,
 			"red": {
-				"offset": -0.21159,
-				"stagger": -0.61159,
-				"period": 1
+				"offset": 1.21841,
+				"stagger": 0,
+				"period": 12.71
 			},
 			"green": {
-				"offset": -0.21159,
+				"offset": -0.13159,
 				"stagger": 0,
-				"period": 1
+				"period": 12.8
 			},
 			"blue": {
-				"offset": 0.19841,
+				"offset": -0.48159,
 				"stagger": 0,
-				"period": 1
+				"period": 12.88
 			},
 			"master": {
-				"offset": -1.07159,
-				"stagger": -0.87159
+				"offset": -0.60159,
+				"stagger": -0.08159
 			},
 			"staggerMask": {
 				"red": "10",
@@ -427,11 +428,11 @@
 		},
 		"options": {
 			"endCondition": "addition",
-			"calculationMethod": "countPlusDisplacementAngle",
+			"calculationMethod": "countPlusAnglePlusRadius",
 			"staggerTiming": "after",
 			"calculationFlags": {
 				"iterations": 1,
-				"displacement": 0,
+				"displacement": 1,
 				"rotation": 1,
 				"displacementXOR": 0,
 				"polarCoordXOR": 0
@@ -1331,6 +1332,117 @@
 			},
 			"endCondition": "",
 			"staggerTiming": "both",
+			"recursionDepth": 1
+		}
+	},
+	"sample25" : {
+		"map": {
+			"width": 7.74722879999997e-9,
+			"height": 8.202137252669007e-9,
+			"x": -1.990376089972418,
+			"y": -1.5165065986505627e-7,
+			"accuracy": 256
+		},
+		"palette": {
+			"colourWavePeriod": 64,
+			"red": {
+				"offset": -0.47,
+				"stagger": 0,
+				"period": 1.1
+			},
+			"green": {
+				"offset": 0,
+				"stagger": 0,
+				"period": 1
+			},
+			"blue": {
+				"offset": 0.7,
+				"stagger": 0,
+				"period": 0.9
+			},
+			"master": {
+				"offset": 0,
+				"stagger": -0.08159
+			},
+			"staggerMask": {
+				"red": "10",
+				"green": "10",
+				"blue": "10"
+			}
+		},
+		"options": {
+			"calculationFlags": {
+				"iterations": 1,
+				"displacement": 1,
+				"rotation": 1,
+				"displacementXOR": 0,
+				"polarCoordXOR": 0
+			},
+			"coefficients": {
+				"iterations": 0.5,
+				"displacement": 20,
+				"rotation": 2,
+				"displacementXOR": 1,
+				"polarCoordXOR": 5
+			},
+			"endCondition": "",
+			"staggerTiming": "both",
+			"recursionDepth": 1
+		}
+	},
+	"sample26" : {
+		"map": {
+			"width": 7.020510288065819e-12,
+			"height": 7.432746657293883e-12,
+			"x": -1.7563670513090253,
+			"y": -0.012351459902081018,
+			"accuracy": 1024
+		},
+		"palette": {
+			"colourWavePeriod": 2048,
+			"red": {
+				"offset": 0.00841,
+				"stagger": 0.12841,
+				"period": 9.58
+			},
+			"green": {
+				"offset": -0.68159,
+				"stagger": -0.02159,
+				"period": 10.56
+			},
+			"blue": {
+				"offset": -1.11159,
+				"stagger": 0.17841,
+				"period": 11.1
+			},
+			"master": {
+				"offset": -1.83159,
+				"stagger": -0.16159
+			},
+			"staggerMask": {
+				"red": "10",
+				"green": "10",
+				"blue": "10"
+			}
+		},
+		"options": {
+			"endCondition": "",
+			"calculationMethod": "countPlusAnglePlusRadius",
+			"staggerTiming": "after",
+			"calculationFlags": {
+				"iterations": 1,
+				"displacement": 1,
+				"rotation": 1,
+				"displacementXOR": 0,
+				"polarCoordXOR": 0
+			},
+			"coefficients": {
+				"iterations": 1,
+				"displacement": 1,
+				"rotation": 1,
+				"displacementXOR": 1,
+				"polarCoordXOR": 1
+			},
 			"recursionDepth": 1
 		}
 	}
