@@ -1,5 +1,7 @@
 ideas
-
+- add a "stagger pattern" option, where you can select between different types of staggering (e.g. checker, dotted, etc.)
+- add image mapping, taking the end (c, ci) and mapping it to a pixel on a source image.
+- add a "working" indicator when rendering takes more than a small amount of time.
 - change the confirmation of saved rendering deletions to a proper windowy div, and add a "Don't ask again" checkbox.
 - Add a colour shift option that simply offsets the count when calculating
   colour.  This should allow better palette cycling when using different wave
@@ -8,4 +10,4 @@ ideas
 - add a y-offset and amplitude to the colour waves
 - add a plotter showing the colour waves
 - integrate multiple palette control methods
-- add an indicator when a render is happening.
+- add a better help/intro system

@@ -2,10 +2,7 @@
 <html>
 <head>
 	<script type="text/javascript" src="mandelbrot.js"></script>
-	<!--script src="winbox/js/winbox.min.js"></script-->
-
 	<link rel="stylesheet" href="mandelbrot.css"/>
-        <!--link rel="stylesheet" href="winbox/css/winbox.min.css"/-->
 	<link rel="icon" type="image" href="Mandelbrot.ico"/>
 </head>
 <body>
@@ -26,7 +23,7 @@
 						Scale	
 					</div><div>
 						<div style="float:right; display:inline-block">
-							<input type="number" id="accuracy" style="float:none; width:9.15em"/>
+							<input type="number" id="accuracy" style="float:none; width:9.3em"/>
 							<a class="multiplierButton" href="javascript:multiplyAccuracy(2);" id="doubleAccuracy">&times;2</a>
 							<a class="multiplierButton" href="javascript:multiplyAccuracy(.5);">&divide;2</a>
 						</div>
@@ -209,7 +206,7 @@
 					<a class="button" href="javascript:;" onclick="exportImage()">Download</a>
 					<a class="button" href="javascript:;" onclick="saveLocation();">Save</a>
 					<a class="button" href="javascript:;" onclick="exportParameters();">Export</a>
-					<a class="button" href="javascript:;" onclick="loadDefaults();">Reset</a>
+					<a class="button" href="javascript:;" onclick="loadDefaults();">Load Defaults</a>
 				</div>
 			</div>
 		</div>
@@ -218,7 +215,7 @@
 				<div id="savedWrapper" data-tab="Saved Renderings">
 					<div class="sideThumbnailScrolling" id="savedRenderings"></div>
 				</div>
-				<div id="demosWrapper" data-tab="Samples">
+				<div id="demosWrapper" data-tab="Examples">
 					<div class="sideThumbnailScrolling" id="demos"></div>
 				</div>
 			</div>

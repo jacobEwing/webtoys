@@ -480,13 +480,6 @@ function deleteSavedLocation(idx){
 }
 
 function buildLoadButton(rendering, options){
-
-	var n;
-	var cnvs = document.createElement('canvas');
-	cnvs.width = loadButtonSize;
-	cnvs.height = loadButtonSize;
-	staticRender(cnvs, cnvs.width, cnvs.height, rendering);
-
 	var button;
 	if(options == undefined) options = {};
 	if(options.button == undefined){
@@ -496,7 +489,18 @@ function buildLoadButton(rendering, options){
 		button = options.button;
 	}
 
-	button.appendChild(cnvs);
+	if(options.image == undefined){
+		let cnvs = document.createElement('canvas');
+		cnvs.width = loadButtonSize;
+		cnvs.height = loadButtonSize;
+		staticRender(cnvs, cnvs.width, cnvs.height, rendering);
+		button.appendChild(cnvs);
+	}else{
+		let img = document.createElement('img');
+		img.src = options.image;
+		button.appendChild(img);
+	}
+
 
 	button.onclick = function(){
 		config = JSON.parse(JSON.stringify(rendering));
@@ -505,9 +509,9 @@ function buildLoadButton(rendering, options){
 		}
 		refreshAll();
 	}
+
 	button.onmouseleave = function(){
-		var n;
-		for(n of this.querySelectorAll('.deleteIcon')){
+		for(let n of this.querySelectorAll('.deleteIcon')){
 			n.parentElement.removeChild(n);
 		}
 	}
@@ -538,7 +542,7 @@ async function renderSampleLocations(){
 	let samples = JSON.parse(await file.text());
 
 	for(let n in samples){
-		document.getElementById('demos').appendChild(buildLoadButton(samples[n], {noDelete : true}));
+		document.getElementById('demos').appendChild(buildLoadButton(samples[n], {noDelete : true, image : 'thumbnails/' + n + '.png'}));
 	}
 
 
@@ -970,21 +974,6 @@ function initialize(){
 	// render the thumbnails
 	renderSavedLocations();
 	renderSampleLocations();
-/*
-	// some playing around if I want to put all of the components in windows
-	let renderWindow = new WinBox({
-		title: "Rendering", 
-		mount : document.getElementById("canvasWrapper"),
-		width: canvas.width + 'px', 
-		height: canvas.height + 'px',
-		scrollbars: false,
-		background: "#346"
-	});
-
-	renderWindow.body.style.overflow = "hidden"
-*/
-
-
 }
 
 /* This function is used to handle backwards compatability with old saved
@@ -1121,6 +1110,14 @@ function initMouseWheel(){
 			return false;
 		};
 	})();
+
+	document.getElementById('savedRenderings').onwheel = function(e){
+		this.scrollBy(e.deltaY, 0);
+	};
+
+	document.getElementById('demos').onwheel = function(e){
+		this.scrollBy(e.deltaY, 0);
+	};
 }
 
 function initMouseClick(){
