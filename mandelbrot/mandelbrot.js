@@ -3,9 +3,8 @@ var canvas, context;
 var map;
 var config, preferences;
 var activeRendering = 0; // <-- keep track of whether the main interface is currently rendering.
-var paletteTabs;
 var colourBlack = { red : 0, green : 0, blue : 0, alpha : 1 };
-var loadButtonSize = 96;
+var thumbnailSize = 96;
 
 /*
 	--- How the configuration is used ---
@@ -33,20 +32,51 @@ var loadButtonSize = 96;
 		So if this is set to 100, then any pixels that receive a count of C will get an
 		angle of 2 * pi * C / 100.
 
-	For each primary colour, we have the values "offset", "stagger", and "period".
+	red, green, blue, master:
+		For each primary colour, we have the values "offset", "stagger", and "period".
 
-	When building a colour, we take the angle calculated from the count (see
-	colourWavePeriod above), and apply a sine function to it.  The exact function
-	is:
-		primaryValue = 127.5 + 127.5 * sin(angle * period + offset + stagger)
+		When building a colour, we take the angle calculated from the count (see
+		colourWavePeriod above), and apply a sine function to it.  The exact function
+		is:
+			primaryValue = 127.5 + 127.5 * sin(angle * period + offset + stagger)
 
-	Note that stagger is only applied when the count is an odd number.  The exact
-	code used can be found in the createColour function defined almost immediately
-	below.
+		Note that stagger is only applied when the count is an odd number.  The exact
+		code used can be found in the createColour function defined almost immediately
+		below.
+
+	staggerMask:
+		colouring can now be staggered in distinct patterns for each
+		primary. Under staggerMask, each primary has a string of 1's
+		and 0's which describe when the colour should be stagggered.
+		For example, if red has the text "10110", then it will be
+		staggered on the first, third, and fourth of every five count
+		values.
 
 	The "options" section is for custom modifiers of the fractal or the colour
-	selection.
+	selection:
+		calculationFlags:
+			These are unnecessary now and will be phased out.
+			Initially they were used to mark which data from the
+			mandelbrot function gets used in colour calculation.
+			The coefficient section below that make this redundant
+			though, as a coefficient of 0 is the same as having it
+			disabled.
 
+		coefficients:
+			The amount that should be multiplied by each of the
+			different colour options when applied.
+
+		endCondition:
+			alternate ending conditions to the mandelbrot loop
+
+		staggerTiming:
+			when staggering should happen relative to the
+			application of displacement and rotation.  Options are
+			"before", "after", or "both".
+
+		recursionDepth:
+			if > 1 then the mandelbot function is applied to the
+			end displacement of (c, ci) x - 1 times.
 */
 var defaultConfig = {
 	"map": {
@@ -84,23 +114,23 @@ var defaultConfig = {
 		}
 	},
 	"options" : {
-		calculationFlags : {  // which data from the mandelbrot function will be used in determining the colour
+		calculationFlags : {
 			iterations : 1,
 			displacement : 0,
 			rotation : 0,
 			displacementXOR : 0,
 			polarCoordXOR : 0
 		},
-		coefficients : { // individual for the data used
+		coefficients : {
 			iterations : 1,
 			displacement : 1,
 			rotation : 1,
 			displacementXOR : 1,
 			polarCoordXOR : 1
 		},
-		"endCondition" : "",// alternate ending conditions to the mandelbrot loop
-		"staggerTiming": "before", // a state to determine where in colour calculation a stagger gets added.
-		"recursionDepth" : 1 // if > 1 then the mandelbot function is applied to the end displacement of (c, ci) x - 1 times.
+		"endCondition" : "",
+		"staggerTiming": "before",
+		"recursionDepth" : 1
 	}
 }
 
@@ -491,8 +521,8 @@ function buildLoadButton(rendering, options){
 
 	if(options.image == undefined){
 		let cnvs = document.createElement('canvas');
-		cnvs.width = loadButtonSize;
-		cnvs.height = loadButtonSize;
+		cnvs.width = thumbnailSize;
+		cnvs.height = thumbnailSize;
 		staticRender(cnvs, cnvs.width, cnvs.height, rendering);
 		button.appendChild(cnvs);
 	}else{
@@ -565,8 +595,8 @@ function renderSavedLocations(){
 	for(let n = 0; n  < numRenderings; n++){
 		button[n] = document.createElement('div');
 		button[n].classList.add('previewButton');
-		button[n].style.width = loadButtonSize + 'px';
-		button[n].style.height = loadButtonSize + 'px';
+		button[n].style.width = thumbnailSize + 'px';
+		button[n].style.height = thumbnailSize + 'px';
 		target.append(button[n]);
 		button[n].onclick = function(){
 			config = JSON.parse(JSON.stringify(renderings[n]));
