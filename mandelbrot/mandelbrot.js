@@ -416,7 +416,7 @@ function resetMandelbrot(){
 	config.map.x = map.x;
 	config.map.y = map.y;
 	config.map.width = map.width;
-	config.map.height = map.height;
+	config.map.height = map.height * canvas.height / canvas.width;
 	config.map.accuracy = map.accuracy;
 
 	document.getElementById('xOffset').value = config.map.x;
@@ -1209,7 +1209,7 @@ function initFieldUpdates(){
 			this.classList.add('error');
 		}else{
 			config.map.width = 1 * this.value;
-			config.map.height = 1 * this.value;
+			config.map.height = config.map.width * canvas.height / canvas.width;
 			this.classList.remove('error');
 			render();
 		}
