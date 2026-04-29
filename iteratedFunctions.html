@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+
+		*, *::before, *::after { box-sizing: border-box; }
+
+		html, body {
+			margin: 0;
+			width: 100%;
+			height: 100%;
+		}
+		body {
+			overflow: hidden;
+			background: #fff;
+			display: flex;
+			flex-direction: column;
+			font-family: sans-serif;
+		}
+
+		#toolbar {
+			flex: 0 0 auto;
+			width: 100%;
+			height: 48px;
+			background: #1a1a1a;
+			display: flex;
+			align-items: center;
+			padding: 0 16px;
+			gap: 28px;
+			border-bottom: 1px solid #333;
+			z-index: 10;
+		}
+
+		#toolbar .toolbar-label {
+			color: #888;
+			font-size: 10px;
+			letter-spacing: 0.12em;
+			text-transform: uppercase;
+			user-select: none;
+		}
+
+		#toolbar .toolbar-title {
+			color: #f0a050;
+			font-size: 12px;
+			font-weight: 500;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			margin-right: 8px;
+			user-select: none;
+		}
+
+		.stepper {
+			display: flex;
+			align-items: center;
+			gap: 0;
+		}
+
+		.stepper button {
+			width: 24px;
+			height: 26px;
+			background: #2e2e2e;
+			border: 1px solid #444;
+			color: #ccc;
+			font-size: 14px;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: background 0.1s, color 0.1s;
+			line-height: 1;
+			padding: 0;
+		}
+
+		.stepper button:first-child {
+			border-radius: 4px 0 0 4px;
+			border-right: none;
+		}
+
+		.stepper button:last-child {
+			border-radius: 0 4px 4px 0;
+			border-left: none;
+		}
+
+		.stepper button:hover {
+			background: #444;
+			color: #fff;
+		}
+
+		.stepper button:active {
+			background: #f0a050;
+			color: #1a1a1a;
+		}
+
+		.stepper input[type=number] {
+			width: 46px;
+			height: 26px;
+			background: #111;
+			border: 1px solid #444;
+			color: #f0f0f0;
+			font-size: 13px;
+			text-align: center;
+			outline: none;
+			padding: 0;
+			-moz-appearance: textfield;
+		}
+
+		.stepper input[type=number]::-webkit-inner-spin-button,
+		.stepper input[type=number]::-webkit-outer-spin-button {
+			-webkit-appearance: none;
+		}
+
+		.stepper input[type=number]:focus {
+			border-color: #f0a050;
+			color: #f0a050;
+		}
+
+		.divider {
+			width: 1px;
+			height: 28px;
+			background: #333;
+		}
+
+		#canvas-container {
+			flex: 1 1 auto;
+			position: relative;
+			overflow: hidden;
+		}
+
+		#canvas-container canvas {
+			position: absolute;
+			top: 0; left: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+		.toggle-btn {
+			height: 26px;
+			padding: 0 12px;
+			background: #f0a050;
+			border: 1px solid #fa5;
+			border-radius: 4px;
+			color: #1a1a1a;
+			font-family: 'DM Mono', monospace;
+			font-size: 10px;
+			letter-spacing: 0.1em;
+			text-transform: uppercase;
+			cursor: pointer;
+			transition: background 0.15s, color 0.15s, border-color 0.15s;
+		}
+
+		.toggle-btn:hover {
+			background: #444;
+			color: #ccc;
+		}
+
+		.toggle-btn.active {
+			background: #2e2e2e;
+			border-color: #444;
+			color: #888;
+		}
+	</style>
+	<script type="text/javascript">
+		var canvas, context, points, dragging = -1, hideHandles = false;
+		var settings = {
+			recursionDepth : 4,
+			numPoints : 4,
+			lineThickness : 1
+		};
+
+		var pointClass = function(x, y){
+			this.x = x == undefined ? 0 : x;
+			this.y = y == undefined ? 0 : y;
+			this.radius = 10;
+		}
+
+		pointClass.prototype.draw = function(){
+			context.save();
+
+			context.beginPath();
+			context.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+			context.fillStyle = "#FDA";
+			context.strokeStyle = "#333";
+			context.lineWidth = 2;
+			context.fill();
+			context.stroke();
+
+			context.beginPath();
+			context.fillStyle="#fa8";
+			context.strokeStyle = "#888";
+			context.arc(this.x, this.y, this.radius / 2, 0, 2 * Math.PI);
+			context.fill();
+			context.stroke();
+
+			context.restore();
+		}
+
+		window.onload = function(){
+			initializePoints();
+			window.onresize = resetCanvas;
+			resetCanvas();
+			initToolbar();
+		}
+
+		function initializePoints(){
+			points = [];
+			var container = document.getElementById('canvas-container');
+			var w = container ? container.clientWidth  : document.body.clientWidth;
+			var h = container ? container.clientHeight : document.body.clientHeight;
+			for(let n = 0; n < settings.numPoints; n++){
+				points[n] = new pointClass();
+				points[n].x = (1 + n) * w / (settings.numPoints + 1);
+				points[n].y = h >> 1;
+			}
+		}
+
+		function render(){
+			context.fillStyle = "#fff";
+			context.fillRect(0, 0, canvas.width, canvas.height);
+			context.beginPath();
+			drawFractal(JSON.parse(JSON.stringify(points)), settings.recursionDepth);
+			context.lineCap = "round";
+			context.lineWidth = settings.lineThickness;
+			context.stroke();
+			if(!hideHandles){
+				drawHandles();
+			}
+		}
+
+		function drawFractal(vertices, depth){
+			if(depth == 0){
+				context.moveTo(vertices[0].x, vertices[0].y);
+				for(let n = 1; n < settings.numPoints; n++){
+					context.lineTo(vertices[n].x, vertices[n].y);
+				}
+			} else {
+				for(let n = 0; n < vertices.length - 1; n++){
+					let aPrime = vertices[n];
+					let bPrime = vertices[n + 1];
+
+					let a = points[0];
+					let b = points[settings.numPoints - 1];
+
+					let aC  = { re: a.x, im: a.y };
+					let bC  = { re: b.x, im: b.y };
+					let aC_ = { re: aPrime.x, im: aPrime.y };
+					let bC_ = { re: bPrime.x, im: bPrime.y };
+
+					let num = complexSub(bC_, aC_);
+					let den = complexSub(bC,  aC);
+					let alpha = complexDiv(num, den);
+					let beta = complexSub(aC_, complexMul(alpha, aC));
+
+					let transformed = points.map(p => {
+						let z = { re: p.x, im: p.y };
+						let zOut = complexAdd(complexMul(alpha, z), beta);
+						return { x: zOut.re, y: zOut.im };
+					});
+
+					drawFractal(transformed, depth - 1);
+				}
+			}
+		}
+
+		function complexAdd(a, b){ return { re: a.re + b.re, im: a.im + b.im }; }
+		function complexSub(a, b){ return { re: a.re - b.re, im: a.im - b.im }; }
+		function complexMul(a, b){ return { re: a.re*b.re - a.im*b.im, im: a.re*b.im + a.im*b.re }; }
+		function complexDiv(a, b){
+			let denom = b.re*b.re + b.im*b.im;
+			return { re: (a.re*b.re + a.im*b.im) / denom, im: (a.im*b.re - a.re*b.im) / denom };
+		}
+
+		function drawHandles(){
+			for(let n = 0; n < settings.numPoints; n++){
+				points[n].draw();
+			}
+		}
+
+		function resetCanvas(){
+			if(canvas != undefined){
+				canvas.remove();
+			}
+			var container = document.getElementById('canvas-container');
+			canvas = document.createElement('canvas');
+			container.appendChild(canvas);
+			canvas.width  = container.clientWidth;
+			canvas.height = container.clientHeight;
+			context = canvas.getContext('2d');
+			render();
+			initIO();
+		}
+
+		function initToolbar(){
+			// Points stepper
+			var ptInput = document.getElementById('input-points');
+			var ptDec   = document.getElementById('dec-points');
+			var ptInc   = document.getElementById('inc-points');
+			ptInput.value = settings.numPoints;
+
+			function applyPoints(val){
+				val = Math.max(2, Math.min(20, parseInt(val) || 2));
+				settings.numPoints = val;
+				ptInput.value = val;
+				initializePoints();
+				resetCanvas();
+			}
+
+			ptDec.onclick = () => applyPoints(settings.numPoints - 1);
+			ptInc.onclick = () => applyPoints(settings.numPoints + 1);
+			ptInput.onchange = () => applyPoints(ptInput.value);
+			ptInput.onkeydown = (e) => { if(e.key === 'Enter') applyPoints(ptInput.value); };
+
+			// Depth stepper
+			var dpInput = document.getElementById('input-depth');
+			var dpDec   = document.getElementById('dec-depth');
+			var dpInc   = document.getElementById('inc-depth');
+			dpInput.value = settings.recursionDepth;
+
+			function applyDepth(val){
+				val = Math.max(1, Math.min(12, parseInt(val) || 1));
+				settings.recursionDepth = val;
+				dpInput.value = val;
+				render();
+			}
+
+			dpDec.onclick = () => applyDepth(settings.recursionDepth - 1);
+			dpInc.onclick = () => applyDepth(settings.recursionDepth + 1);
+			dpInput.onchange = () => applyDepth(dpInput.value);
+			dpInput.onkeydown = (e) => { if(e.key === 'Enter') applyDepth(dpInput.value); };
+
+			// Thickness stepper
+			var thInput = document.getElementById('input-thickness');
+			var thDec   = document.getElementById('dec-thickness');
+			var thInc   = document.getElementById('inc-thickness');
+			thInput.value = settings.lineThickness;
+
+			function applyThickness(val){
+				val = Math.max(1, parseInt(val) || 1);
+				settings.lineThickness = val;
+				thInput.value = val;
+				render();
+			}
+
+			thDec.onclick = () => applyThickness(settings.lineThickness - 1);
+			thInc.onclick = () => applyThickness(settings.lineThickness + 1);
+			thInput.onchange = () => applyThickness(thInput.value);
+			thInput.onkeydown = (e) => { if(e.key === 'Enter') applyThickness(thInput.value); };
+
+			// button toggling the display of handles
+			var toggleBtn = document.getElementById('toggle-handles');
+			toggleBtn.onclick = function(){
+				hideHandles = !hideHandles;
+				toggleBtn.classList.toggle('active', hideHandles);
+				render();
+			}
+		}
+
+		function initIO(){
+			canvas.onmousedown = function(e){
+				var n;
+				var rect = canvas.getBoundingClientRect();
+				var x = e.clientX - rect.left;
+				var y = e.clientY - rect.top;
+				for(n = 0; n < settings.numPoints; n++){
+					if(distance(x, y, points[n].x, points[n].y) < 1.3 * points[n].radius){
+						dragging = n;
+						break;
+					}
+				}
+				if(n >= settings.numPoints){
+					dragging = "all";
+				}
+			}
+
+			canvas.onmouseup = function(e){
+				dragging = -1;
+			}
+
+			canvas.onmousemove = function(e){
+				var rect = canvas.getBoundingClientRect();
+				var x = e.clientX - rect.left;
+				var y = e.clientY - rect.top;
+				if(dragging == "all"){
+					for(let n = 0; n < settings.numPoints; n++){
+						points[n].x += e.movementX;
+						points[n].y += e.movementY;
+					}
+					render();
+				} else if(dragging >= 0){
+					points[dragging].x = x;
+					points[dragging].y = y;
+					render();
+				}
+			}
+
+			canvas.onwheel = function(e){
+				e.preventDefault();
+				e.stopPropagation();
+				var multiple = e.deltaY > 0 ? 0.9 : 1.1;
+				var clickX = e.offsetX;
+				var clickY = e.offsetY;
+				for(let n = 0; n < points.length; n++){
+					let dx = (points[n].x - clickX) * multiple;
+					let dy = (points[n].y - clickY) * multiple;
+					points[n].x = clickX + dx;
+					points[n].y = clickY + dy;
+				}
+				render();
+			};
+		}
+
+		function distance(x1, y1, x2, y2){
+			let [dx, dy] = [x2 - x1, y2 - y1];
+			return Math.sqrt(dx * dx + dy * dy);
+		}
+	</script>
+</head>
+<body>
+	<div id="toolbar">
+		<span class="toolbar-label">Points</span>
+		<div class="stepper">
+			<button id="dec-points">-</button>
+			<input id="input-points" type="number" min="2" max="16" />
+			<button id="inc-points">+</button>
+		</div>
+
+
+		<span class="toolbar-label">Depth</span>
+		<div class="stepper">
+			<button id="dec-depth">-</button>
+			<input id="input-depth" type="number" min="1" max="12" />
+			<button id="inc-depth">+</button>
+		</div>
+
+		<div class="divider"></div>
+
+		<span class="toolbar-label">Line Thickness</span>
+		<div class="stepper">
+			<button id="dec-thickness">-</button>
+			<input id="input-thickness" type="number" min="1" value="1"/>
+			<button id="inc-thickness">+</button>
+		</div>
+
+		<button id="toggle-handles" class="toggle-btn">Show Handles</button>
+	</div>
+
+	<div id="canvas-container"></div>
+</body>
+</html>
