@@ -69,6 +69,9 @@ var thumbnailSize = 96;
 		endCondition:
 			alternate ending conditions to the mandelbrot loop
 
+		maxRadius:
+			the maximum displacement in the end condition of the mandelbrot loop
+
 		staggerTiming:
 			when staggering should happen relative to the
 			application of displacement and rotation.  Options are
@@ -129,6 +132,7 @@ var defaultConfig = {
 			polarCoordXOR : 1
 		},
 		"endCondition" : "",
+		"maxRadius" : 4,
 		"staggerTiming": "before",
 		"recursionDepth" : 1
 	}
@@ -270,7 +274,7 @@ function mandelbrot(c, ci, config, iterations){
 	// This ugly nesting of the loop inside the switch is for speed, as checking the end condition each time is much slower
 	switch(config.options.endCondition){
 		case 'multiplication':
-			while(count <= accuracy && zsq * zisq < 4){
+			while(count <= accuracy && zsq * zisq < config.options.maxRadius){
 				zi = z * zi * 2 + ci;
 				z = zsq - zisq + c;
 				zsq = z * z;
@@ -279,7 +283,7 @@ function mandelbrot(c, ci, config, iterations){
 			}
 			break;
 		case 'subtraction':
-			while(count <= accuracy && zsq - zisq < 4){
+			while(count <= accuracy && Math.abs(zsq - zisq) < config.options.maxRadius){ /* lower end value reduces noise */
 				zi = z * zi * 2 + ci;
 				z = zsq - zisq + c;
 				zsq = z * z;
@@ -288,7 +292,7 @@ function mandelbrot(c, ci, config, iterations){
 			}
 			break;
 		case 'fluffyCloud':
-			while(count <= accuracy && Math.abs(z) + Math.abs(zi) < 2){
+			while(count <= accuracy && Math.abs(z) + Math.abs(zi) < config.options.maxRadius){
 				zi = z * zi * 2 + ci;
 				z = zsq - zisq + c;
 				zsq = z * z;
@@ -297,7 +301,7 @@ function mandelbrot(c, ci, config, iterations){
 			}
 			break;
 		case 'foliage':
-			while(count <= accuracy && Math.abs(z) - Math.abs(zi) < 2){
+			while(count <= accuracy && Math.abs(Math.abs(z) - Math.abs(zi)) < config.options.maxRadius){
 				zi = z * zi * 2 + ci;
 				z = zsq - zisq + c;
 				zsq = z * z;
@@ -306,7 +310,7 @@ function mandelbrot(c, ci, config, iterations){
 			}
 			break;
 		default:
-			while(count <= accuracy && zsq + zisq < 4){
+			while(count <= accuracy && zsq + zisq < config.options.maxRadius){
 				zi = z * zi * 2 + ci;
 				z = zsq - zisq + c;
 				zsq = z * z;
@@ -416,7 +420,7 @@ function resetMandelbrot(){
 	config.map.x = map.x;
 	config.map.y = map.y;
 	config.map.width = map.width;
-	config.map.height = map.height * canvas.height / canvas.width;
+	correctHeightRatio(config);
 	config.map.accuracy = map.accuracy;
 
 	document.getElementById('xOffset').value = config.map.x;
@@ -465,11 +469,14 @@ function updateFields(){
 	document.getElementById('calculationXORDisplacement').checked = config.options.calculationFlags.displacementXOR != 0;
 	document.getElementById('calculationXORPolar').checked = config.options.calculationFlags.polarCoordXOR != 0;
 
+	document.getElementById('maxRadius').value = config.options.maxRadius;
+
 	document.getElementById('iterationCoefficient').value = config.options.coefficients.iterations;
 	document.getElementById('displacementCoefficient').value = config.options.coefficients.displacement;
 	document.getElementById('rotationCoefficient').value = config.options.coefficients.rotation;
 	document.getElementById('displacementXORCoefficient').value = config.options.coefficients.displacementXOR;
 	document.getElementById('polarCoordXORCoefficient').value = config.options.coefficients.polarCoordXOR;
+
 
 
 	if(config.options.staggerTiming == undefined){
@@ -509,6 +516,11 @@ function deleteSavedLocation(idx){
 
 }
 
+// correct the height of rendered area to match the proportions of the canvas
+function correctHeightRatio(config){
+	config.map.height = config.map.width *  canvas.height / canvas.width;
+}
+
 function buildLoadButton(rendering, options){
 	var button;
 	if(options == undefined) options = {};
@@ -537,6 +549,7 @@ function buildLoadButton(rendering, options){
 		if(config.options == undefined){
 			config.options = {};
 		}
+		correctHeightRatio(config);
 		refreshAll();
 	}
 
@@ -600,6 +613,7 @@ function renderSavedLocations(){
 		target.append(button[n]);
 		button[n].onclick = function(){
 			config = JSON.parse(JSON.stringify(renderings[n]));
+			correctHeightRatio(config);
 			refreshAll();
 		}
 	}
@@ -980,8 +994,7 @@ function initialize(){
 
 
 	//initialize the fractal
-	// make sure that our area rendered is the same proportions as the actual viewport
-	config.map.height = config.map.width * canvas.height / canvas.width;
+	correctHeightRatio(config);
 	render();
 	updateFields();
 
@@ -1077,6 +1090,11 @@ function updateOldStoredData(){
 		if(renderings[n].options.recursionDepth == undefined){
 			renderings[n].options.recursionDepth = 1;
 		}
+
+		// add the new maximum radius option
+		if(renderings[n].options.maxRadius == undefined){
+			renderings[n].options.maxRadius = defaultConfig.options.maxRadius;
+		}
 	}
 
 
@@ -1123,7 +1141,7 @@ function initMouseWheel(){
 					}else{
 						config.map.width *= multiple;
 					}
-					config.map.height = config.map.width *  canvas.height / canvas.width;
+					correctHeightRatio(config);
 
 					var clickX = e.offsetX;//pageX - canvas.offsetLeft;
 					var clickY = e.offsetY;//pageY - canvas.offsetTop;
@@ -1209,7 +1227,7 @@ function initFieldUpdates(){
 			this.classList.add('error');
 		}else{
 			config.map.width = 1 * this.value;
-			config.map.height = config.map.width * canvas.height / canvas.width;
+			correctHeightRatio(config);
 			this.classList.remove('error');
 			render();
 		}
@@ -1249,6 +1267,11 @@ function initModifiers() {
 			config.options.endCondition = this.value;
 			render();
 		}
+	}
+
+	document.getElementById("maxRadius").onchange = function(){
+		config.options.maxRadius = 1 * this.value;
+		render();
 	}
 
 	// initialize calculation options

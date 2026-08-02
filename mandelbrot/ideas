@@ -1,11 +1,12 @@
-ideas
+- add a right-click option on saved images allowing you to "load", "load map", and "load palette"
+- add a "get link" button that provides a URL with the current parameters passed in
+- add the abillity to apply a backdrop image, as well as a similar sine wave system for translucency, integrating the image like a backlight.
 - add a "stagger pattern" option, where you can select between different types of staggering (e.g. checker, dotted, etc.)
 - add image mapping, taking the end (c, ci) and mapping it to a pixel on a source image.
 - add a "working" indicator when rendering takes more than a small amount of time.
 - change the confirmation of saved rendering deletions to a proper windowy div, and add a "Don't ask again" checkbox.
 - Add a colour shift option that simply offsets the count when calculating
-  colour.  This should allow better palette cycling when using different wave
-  frequencies.
+  colour.  This should allow better palette cycling when using different wave frequencies.
 - a way to save/reload the palette
 - add a y-offset and amplitude to the colour waves
 - add a plotter showing the colour waves

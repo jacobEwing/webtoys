@@ -83,26 +83,31 @@
 								</tbody>
 							</table>
 						</div>
-						<div data-tab="End Condition">
+						<div data-tab="End Condition" style="display:grid;grid-template-columns: 1fr 1fr;">
 							<div>
-								<input type="radio" name="endCondition" value="addition" id="endCondition1" checked>
-								<label for="endCondition1" selected>Addition (z&#178; + zi&#178; &lt; 4)</label>
+								<div>
+									<input type="radio" name="endCondition" value="addition" id="endCondition1" checked>
+									<label for="endCondition1" selected>Addition (z&#178; + zi&#178;)</label>
+								</div>
+								<div>
+									<input type="radio" name="endCondition" value="subtraction" id="endCondition2">
+									<label for="endCondition2" selected>Subtraction (|z&#178; - zi&#178;|)</label>
+								</div>
+								<div>
+									<input type="radio" name="endCondition" value="multiplication" id="endCondition3">
+									<label for="endCondition3">Multiplcation (z&#178; &times; zi&#178;)</label>
+								</div>
+								<div>
+									<input type="radio" name="endCondition" value="fluffyCloud" id="endCondition4">
+									<label for="endCondition4">Fluffy Cloud (|z| + |zi|)</label>
+								</div>
+								<div>
+									<input type="radio" name="endCondition" value="foliage" id="endCondition5">
+									<label for="endCondition5">Foliage (||z| - |zi||)</label>
+								</div>
 							</div>
-							<div>
-								<input type="radio" name="endCondition" value="subtraction" id="endCondition2">
-								<label for="endCondition2" selected>Subtraction (z&#178; - zi&#178; &lt; 4)</label>
-							</div>
-							<div>
-								<input type="radio" name="endCondition" value="multiplication" id="endCondition3">
-								<label for="endCondition3">Multiplcation (z&#178; &times; zi&#178; &lt; 4)</label>
-							</div>
-							<div>
-								<input type="radio" name="endCondition" value="fluffyCloud" id="endCondition4">
-								<label for="endCondition4">Fluffy Cloud (|z| + |zi| &lt; 2)</label>
-							</div>
-							<div>
-								<input type="radio" name="endCondition" value="foliage" id="endCondition5">
-								<label for="endCondition5">Foliage (|z| - |zi| &lt; 2)</label>
+							<div style="line-height: 100%;">
+								<p>Max. Value: <input type="number" name="maxRadius" id="maxRadius" style="width: 5ch"/></p>
 							</div>
 						</div>
 						<div data-tab="Other">

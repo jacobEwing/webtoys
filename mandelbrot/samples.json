@@ -52,7 +52,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample2": {
@@ -108,6 +109,7 @@
 				"polarCoordXOR": 1
 			},
 			"recursionDepth": 1,
+			"maxRadius": 4,
 			"staggerTiming": "after"
 		}
 	},
@@ -164,7 +166,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample4" : {
@@ -220,6 +223,7 @@
 				"polarCoordXOR": 1
 			},
 			"recursionDepth": 1,
+			"maxRadius": 4,
 			"staggerTiming": "after"
 		}
 	},
@@ -276,7 +280,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample6" : {
@@ -332,7 +337,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample7" : {
@@ -388,7 +394,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample8": {
@@ -444,7 +451,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample9" : {
@@ -500,7 +508,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample10" : {
@@ -556,7 +565,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample11" : {
@@ -612,7 +622,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample12" : {
@@ -668,7 +679,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample13" : {
@@ -724,7 +736,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample14": {
@@ -780,7 +793,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample15": {
@@ -835,7 +849,8 @@
 			},
 			"endCondition": "",
 			"staggerTiming": "before",
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample16": {
@@ -891,7 +906,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": -1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample17" : {
@@ -947,7 +963,8 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample18" : {
@@ -1002,7 +1019,8 @@
 			},
 			"endCondition": "",
 			"staggerTiming": "both",
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample19" : {
@@ -1057,7 +1075,8 @@
 			},
 			"endCondition": "addition",
 			"staggerTiming": "both",
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample20" : {
@@ -1112,7 +1131,8 @@
 			},
 			"endCondition": "addition",
 			"staggerTiming": "both",
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample21" : {
@@ -1167,7 +1187,8 @@
 			},
 			"endCondition": "",
 			"staggerTiming": "both",
-			"recursionDepth": 3
+			"recursionDepth": 3,
+			"maxRadius": 4
 		}
 	},
 	"sample22":{
@@ -1222,7 +1243,8 @@
 			},
 			"endCondition": "",
 			"staggerTiming": "both",
-			"recursionDepth": 3
+			"recursionDepth": 3,
+			"maxRadius": 4
 		}
 	},
 	"sample23": {
@@ -1277,7 +1299,8 @@
 			},
 			"endCondition": "",
 			"staggerTiming": "both",
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample24": {
@@ -1332,7 +1355,8 @@
 			},
 			"endCondition": "",
 			"staggerTiming": "both",
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample25" : {
@@ -1387,7 +1411,8 @@
 			},
 			"endCondition": "",
 			"staggerTiming": "both",
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	},
 	"sample26" : {
@@ -1443,7 +1468,64 @@
 				"displacementXOR": 1,
 				"polarCoordXOR": 1
 			},
-			"recursionDepth": 1
+			"recursionDepth": 1,
+			"maxRadius": 4
+		}
+	},
+	"sample27" : {
+		"map": {
+			"width": 2.3905734582857042e-9,
+			"height": 2.530945209395007e-9,
+			"x": -1.9415513875478598,
+			"y": -0.00021551974404932718,
+			"accuracy": 1024
+		},
+		"palette": {
+			"colourWavePeriod": 640,
+			"red": {
+				"offset": 0.99841,
+				"stagger": 0,
+				"period": 1
+			},
+			"green": {
+				"offset": 1.11841,
+				"stagger": 0,
+				"period": 1
+			},
+			"blue": {
+				"offset": 1.69841,
+				"stagger": 0,
+				"period": 2.32
+			},
+			"master": {
+				"offset": 2.06841,
+				"stagger": -0.18159
+			},
+			"staggerMask": {
+				"red": "11111000000",
+				"green": "00111110000",
+				"blue": "01111100000"
+			}
+		},
+		"options": {
+			"calculationFlags": {
+				"iterations": 1,
+				"displacement": 1,
+				"rotation": 1,
+				"displacementXOR": 0,
+				"polarCoordXOR": 0
+			},
+			"coefficients": {
+				"iterations": 1,
+				"displacement": 1,
+				"rotation": 1,
+				"displacementXOR": 1,
+				"polarCoordXOR": 1
+			},
+			"endCondition": "",
+			"staggerTiming": "both",
+			"recursionDepth": 1,
+			"maxRadius": 4
 		}
 	}
 }
