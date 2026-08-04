@@ -585,7 +585,7 @@ async function renderSampleLocations(){
 	let samples = JSON.parse(await file.text());
 
 	for(let n in samples){
-		document.getElementById('demos').appendChild(buildLoadButton(samples[n], {noDelete : true, image : 'thumbnails/' + n + '.png'}));
+		document.getElementById('demos').appendChild(buildLoadButton(samples[n], {noDelete : true, image : 'thumbnails/' + n + '.png?foo'}));
 	}
 
 
