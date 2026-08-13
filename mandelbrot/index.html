@@ -210,7 +210,7 @@
 				<div id="exports" class="toolWrapper">
 					<a class="button" href="javascript:;" onclick="exportImage()">Download</a>
 					<a class="button" href="javascript:;" onclick="saveLocation();">Save</a>
-					<a class="button" href="javascript:;" onclick="exportParameters();">Export</a>
+					<a class="button" href="javascript:;" onclick="URLPopup();">Get URL</a>
 					<a class="button" href="javascript:;" onclick="loadDefaults();">Load Defaults</a>
 				</div>
 			</div>
@@ -282,17 +282,11 @@
 			</ul>
 		</div>
 
-		<div id="exportParametersTemplate">
-			<h1>Export as JSON</h1>
+		<div id="URLPopupTemplate">
+			<h1>Get URL</h1>
 
-			<p>The parameters for each rendering are stored as a JSON object, describing
-			the rendering itself, as well as the palette configuration.  The text area
-			below contains the parameters used for this rendering.</p>
-
+			<p>The URL for this rendering is:</p>
 			<textarea></textarea>
-
-			<p>For more information on how the palette configuration is used, click on the
-			(?) button in the palette section on the right.</p>
 		</div>
 
 		<div id="progressBarTemplate" class="toolWrapper">

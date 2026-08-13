@@ -647,18 +647,23 @@ function showWelcomeWindow(){
 }
 
 // show a popup dialogue containing the configuration JSON object
-function exportParameters(){
+function URLPopup(){
 	var buttons = [
 		{
 			label : 'Close',
 			action : closePopup
 		}
 	];
-	let content = document.getElementById("exportParametersTemplate").cloneNode(true);
-	let textField = content.getElementsByTagName('textarea')[0];
-	let textContent = JSON.stringify(config, null, "\t");;
+	let content = document.getElementById("URLPopupTemplate").cloneNode(true);
 
-	textField.value = textContent;
+	// populate the URL span with the URL
+	let configText = btoa(JSON.stringify(config, null, "").replace(/\s/g,''));
+	let url = window.location.protocol + '//' + window.location.hostname + window.location.pathname + '?config=' + configText;
+	let urlSpan = content.getElementsByTagName('textarea')[0];
+	urlSpan.innerHTML = url;
+	
+
+
 
 	popup(content, [{label : 'Close', action : closePopup}]);
 }
@@ -733,9 +738,9 @@ function exportImage(){
 				var width = 1 * widthField.value;
 				var height = 1 * heightField.value;
 				if(width > height){
-					cfg.map.width = cfg.map.width * width / height;
+					cfg.map.width = cfg.map.height * width / height;
 				}else{
-					cfg.map.height = cfg.map.height * height / width;
+					cfg.map.height = cfg.map.width * height / width;
 				}
 				rendering.width = width;
 				rendering.height = height;
@@ -964,8 +969,23 @@ function savePreferences(){
 
 // The initial startup procedure
 function initialize(){
-	// load the default configuration
+	// load config from URL if available, or use default otherwise.
 	config = JSON.parse(JSON.stringify(defaultConfig));
+	if(window.location.search != ''){
+		// first drop the preceding ?
+		let url = (window.location.search).slice(1);
+
+		// now get any parameters.  As of this writing the only one we want is "config"
+		let params = url.split("&").map(function (kv) {return kv.split("=", 2);});
+		for(let n in params){
+			if(params[n][0] == 'config'){
+				// at some point this needs an error check to make sure
+				// the data is valid.
+				config = JSON.parse(atob(params[n][1]));
+				break;
+			}
+		}
+	}
 
 	// get preferences
 	preferences = localStorage.getItem('preferences');
