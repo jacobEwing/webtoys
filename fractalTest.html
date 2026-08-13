@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+	<script type="text/javascript">
+		var canvas, context;
+		window.onload = function(){
+			canvas = document.getElementById('demo');
+			context = canvas.getContext('2d');
+			let size = canvas.width < canvas.height ? canvas.width : canvas.height;
+			let halfSize = size >> 1;
+			let cx = canvas.width >> 1;
+			let cy = canvas.height >> 1;
+
+			drawShape([[cx, cy - halfSize], [cx + halfSize, cy], [cx, cy + halfSize], [cx - halfSize, cy]], 8);
+			
+		}
+
+		function drawShape(points, depth){
+			if(depth == undefined){
+				depth = 4;
+			}
+			context.moveTo(points[0][0], points[0][1]);
+			context.beginPath();
+			context.lineTo(points[1][0], points[1][1]);
+			context.lineTo(points[2][0], points[2][1]);
+			context.lineTo(points[3][0], points[3][1]);
+			context.lineTo(points[0][0], points[0][1]);
+			context.closePath();
+			context.stroke();
+
+			if(depth > 0){
+				drawShape(
+					[
+						[points[0][0] + points[1][0] >> 1, points[0][1] + points[1][1] >> 1],
+						[points[1][0], points[1][1]],
+						[points[1][0] + points[2][0] >> 1, points[1][1] + points[2][1] >> 1],
+						[points[0][0], points[1][1]]
+					],
+					depth - 1
+				);
+
+				drawShape(
+					[
+						[points[0][0] + points[3][0] >> 1, points[0][1] + points[3][1] >> 1],
+						[points[0][0], points[3][1]],
+						[points[2][0] + points[3][0] >> 1, points[2][1] + points[3][1] >> 1],
+						[points[3][0], points[3][1]]
+					],
+					depth - 1
+				);
+
+				drawShape(
+					[
+						[points[0][0], points[3][1]],
+						[points[1][0] + points[2][0] >> 1, points[1][1] + points[2][1] >> 1],
+						[points[2][0], points[2][1]],
+						[points[2][0] + points[3][0] >> 1, points[2][1] + points[3][1] >> 1]
+					],
+					depth - 1
+				);
+
+			}
+
+
+		}
+	</script>
+<body>
+	<canvas width=640 height=640 id="demo"></canvas>
+</body>
+</html>

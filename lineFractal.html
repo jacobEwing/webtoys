@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		html, body {
+			width: 100%;
+			height: 100%;
+			display: flex;
+			justify-content: space-around;
+			align-items: center;
+			overflow: hidden;
+
+		}
+		body > div {
+			border: 1px solid #aaa;
+		}
+
+	</style>
+
+	<script type="text/javascript">
+		var maxDepth = 14;
+		var canvas, context;
+		var scale = .45;
+		var offset, ang = 0;
+		window.onload = function(){
+			canvas = document.getElementsByTagName('canvas')[0];
+			context = canvas.getContext('2d');
+			context.strokeStyle = "#000";
+			var cx = canvas.width >> 1;
+			var cy = canvas.height >> 1;
+			var x1 = cx - canvas.width * scale * .5;
+			var x2 = cx + canvas.width * scale * .5;
+			setInterval(function(){
+				offset = Math.sin(ang += .1) * .2;
+				context.clearRect(0, 0, canvas.width, canvas.height);
+				render(x1, cy, x2, cy, maxDepth);
+				render(x2, cy, x1, cy, maxDepth);
+			}, 50);
+		}
+
+		function render(x1, y1, x2, y2, depth){
+			context.beginPath();
+			let [x3, y3] = getThirdVertex(x1, y1, x2, y2);
+			if(depth > 0){
+				render(x1, y1, x3, y3, depth - 1);
+				render(x3, y3, x2, y2, depth - 1);
+			}else{
+				context.moveTo(x1, y1);
+				context.lineTo(x3, y3);
+				context.lineTo(x2, y2);
+				context.stroke();
+			}
+			
+		}
+
+		function getThirdVertex(x1, y1, x2, y2, clockwise = false) {
+			var midPoint = {
+				x : (x1 + x2) * .5,
+				y : (y1 + y2) * .5
+			};
+
+			var delta = {
+				x : x2 - x1,
+				y : y2 - y1
+			};
+
+			var length = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+
+			var distance = (Math.sqrt(3) / 2) * length;
+			distance *= .4 + offset + .2;//.58;
+			distance *= clockwise ? 1 : -1;
+
+			return [
+				midPoint.x + distance * -delta.y / length,
+				midPoint.y + distance * delta.x / length
+			];
+		}
+	</script>
+</head>
+<body>
+	<div><canvas width=600 height=600></canvas></div>
+</body>
+</html>
