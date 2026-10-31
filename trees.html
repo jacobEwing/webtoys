@@ -8,56 +8,86 @@
 			background-color: #dee2d0;
 		}
 	</style>
-	<script type="text/javascript" src="matrices.js"></script>
 	<script type="text/javascript">
 		var gameCanvas, gameContext;
 		var resolution;
 		var tree;
 		var numTrees = 6;
 
+		// a small seeded pseudo-random number generator: given the same seed
+		// it always produces the same sequence of numbers in [0, 1)
+		var randomClass = function(seed){
+			this.state = seed >>> 0;
+		};
+
+		randomClass.prototype.next = function(){
+			var t = this.state = (this.state + 0x6D2B79F5) >>> 0;
+			t = Math.imul(t ^ (t >>> 15), t | 1);
+			t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+			return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+		};
+
+		// mix a seed with an index so that every branch grown from a tree gets
+		// its own random key, but always the same one for the same tree
+		var mixSeed = function(seed, index){
+			var h = (seed ^ Math.imul(index, 0x9E3779B1)) >>> 0;
+			h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B) >>> 0;
+			h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35) >>> 0;
+			return (h ^ (h >>> 16)) >>> 0;
+		};
+
 		// a base template for elemnts to be drawn in the game
 		var gameElement = function(){
-			this.position = new matrixClass(1, 3);
+			this.position = { 'x': 0, 'y': 0, 'z': 0 };
 		};
 
 		gameElement.prototype.getPosition = function(){
-			return { 'x': this.position.val(0, 0), 'y': this.position.val(0, 1), 'z': this.position.val(0, 2) };
+			return { 'x': this.position.x, 'y': this.position.y, 'z': this.position.z };
 		};
 
 		// treeElement is a child class of gameElement
-		var treeElement = function(){
-			this.ang1 = Math.random() * .5 + 0.1;
-			this.ang2 = Math.random() * .5 - .6;
-			this.scaleRatio1 = Math.random() * 0.2 + 0.5;
-			this.scaleRatio2 = Math.random() * 0.2 + 0.5;
-			this.limbLength1 = Math.random() * 40 + 70 + 10 * Math.cos(this.ang2);
-			this.limbLength2 = Math.random() * 70 + 40 + 10 * Math.sin(this.ang1);
-			this.colour = {r: 0, g: 0, b: 0};
-			this.position = new matrixClass(1, 3);
+		var treeElement = function(options){
+			options = options || {};
 
-			var arg, n;
-			if(typeof(arguments[0] == 'object')){
-				for(arg in arguments[0]){
-					switch(arg){
-						case 'position':
-							this.position.setVals(
-								[
-									[arguments[0].position.x], 
-									[arguments[0].position.y], 
-									[arguments[0].position.z]
-								]
-							);
-							break;
-						case 'colour':
-							this.colour = arguments[0].colour;
-							
-					}
-				}
+			// every tree carries its own random key, so a tree grown from a
+			// given key always looks the same; a key can be passed in for child
+			// branches, otherwise a new one is picked at random
+			if(typeof(options.seed) === 'number'){
+				this.seed = options.seed >>> 0;
+			} else {
+				this.seed = Math.floor(Math.random() * 4294967296) >>> 0;
+			}
+			this.random = new randomClass(this.seed);
+			this.branchCount = 0;
+
+			this.ang1 = this.random.next() * .5 + 0.1;
+			this.ang2 = this.random.next() * .5 - .6;
+			this.scaleRatio1 = this.random.next() * 0.3 + 0.5;
+			this.scaleRatio2 = this.random.next() * 0.3 + 0.5;
+			this.limbLength1 = this.random.next() * 40 + 70 + 20 * Math.cos(this.ang2);
+			this.limbLength2 = this.random.next() * 70 + 40 + 20 * Math.sin(this.ang1);
+			this.colour = {r: 0, g: 0, b: 0};
+			this.position = { 'x': 0, 'y': 0, 'z': 0 };
+
+			if(options.position){
+				this.position.x = options.position.x;
+				this.position.y = options.position.y;
+				this.position.z = options.position.z;
+			}
+			if(options.colour){
+				this.colour = options.colour;
 			}
 		};
 		treeElement.prototype = new gameElement();
 		treeElement.prototype.constructor = treeElement;
 
+		// hand out a seed for the next branch this tree grows; the counter is
+		// reset every time the tree is drawn, so each frame grows exactly the
+		// same set of branches
+		treeElement.prototype.nextBranchSeed = function(){
+			this.branchCount++;
+			return mixSeed(this.seed, this.branchCount);
+		};
 
 		treeElement.prototype.drawBranches = function(context, width, recursion){
 			recursion--;
@@ -72,10 +102,11 @@
 					context.scale(recursion % 2 ? this.scaleRatio1 : this.scaleRatio2, recursion % 2 ? this.scaleRatio1 : this.scaleRatio2);
 					context.rotate(recursion % 2 ? this.ang1 : -this.ang2);
 					context.lineWidth = width;
-					this.drawBranches(context, width, recursion);
+					var childBranch = new treeElement({seed: this.nextBranchSeed()});
+					childBranch.drawBranches(context, width, recursion);
 				}
 				context.moveTo(0, 0);
-				
+
 			context.restore();
 
 			context.save();
@@ -89,18 +120,23 @@
 					context.scale(recursion % 2 ? this.scaleRatio2 : this.scaleRatio1, recursion % 2 ? this.scaleRatio2 : this.scaleRatio1);
 					context.rotate(recursion % 2 ? this.ang2 : -this.ang1);
 					context.lineWidth = width;
-					this.drawBranches(context, width, recursion);
+					var childBranch = new treeElement({seed: this.nextBranchSeed()});
+					childBranch.drawBranches(context, width, recursion);
 				}
 				context.moveTo(0, 0);
-				
+
 			context.restore();
 		};
 
 		treeElement.prototype.draw = function(context, width, recursion){
+			// reset the branch counter so the same seeds are handed out on
+			// every frame, keeping the branches from flickering
+			this.branchCount = 0;
+
 			context.save();
 				context.strokeStyle = 'rgb(' + this.colour.r + ', ' + this.colour.g + ', ' + this.colour.b + ')';
 				context.lineCap = 'round';
-				context.translate(this.position.val(0, 0), this.position.val(0, 1) - Math.sqrt(this.position.val(0, 2)));
+				context.translate(this.position.x, this.position.y - Math.sqrt(this.position.z));
 				context.beginPath();
 				context.lineWidth = width;
 				context.moveTo(0, 0);
@@ -117,13 +153,13 @@
 			return {
 				width: 3 * length,
 				height: 3 * length
-			}
+			};
 
-		}
+		};
 		window.onload = function(){
 			resolution = {
 				x : document.body.clientWidth,
-				y : document. body.clientWidth >> 1
+				y : document.body.clientWidth >> 1
 			};
 			gameCanvas = document.getElementById('gameCanvas');
 			gameCanvas.width = resolution.x;
@@ -140,7 +176,7 @@
 					colour: {
 						r : Math.floor(Math.random() * 64),
 						g : Math.floor(Math.random() * 32),
-						b : Math.floor(Math.random() * 32),
+						b : Math.floor(Math.random() * 32)
 					}
 
 				});
@@ -154,11 +190,9 @@
 
 		function animate(){
 			var n;
-			var motion = new matrixClass([[-2], [0], [0]]);
-			var wraparound = new matrixClass([[resolution.x], [0], [0]]);
 			for(n = 0; n < numTrees; n++){
-				tree[n].position.add(motion);
-				if(tree[n].position.val(0, 0, 0) < -resolution.x / (numTrees - 2)){
+				tree[n].position.x -= 2;
+				if(tree[n].position.x < -resolution.x / (numTrees - 2)){
 					tree[n] = new treeElement({
 						position: {
 							'x': (numTrees - 1) * (resolution.x / (numTrees - 2)),
@@ -168,7 +202,7 @@
 						colour: {
 							r : Math.floor(Math.random() * 64),
 							g : Math.floor(Math.random() * 32),
-							b : Math.floor(Math.random() * 32),
+							b : Math.floor(Math.random() * 32)
 						}
 
 					});

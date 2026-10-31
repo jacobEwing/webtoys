@@ -26,7 +26,7 @@
 			display: flex;
 			align-items: center;
 			padding: 0 16px;
-			gap: 28px;
+			gap: 20px;
 			border-bottom: 1px solid #333;
 			z-index: 10;
 		}
@@ -47,6 +47,17 @@
 			text-transform: uppercase;
 			margin-right: 8px;
 			user-select: none;
+		}
+
+		.toolbar-status {
+			margin-left: auto;
+			color: #f0a050;
+			font-size: 10px;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			opacity: 0.85;
+			user-select: none;
+			white-space: nowrap;
 		}
 
 		.stepper {
@@ -146,6 +157,7 @@
 			text-transform: uppercase;
 			cursor: pointer;
 			transition: background 0.15s, color 0.15s, border-color 0.15s;
+			white-space: nowrap;
 		}
 
 		.toggle-btn:hover {
@@ -161,11 +173,29 @@
 	</style>
 	<script type="text/javascript">
 		var canvas, context, points, dragging = -1, hideHandles = false;
+
 		var settings = {
 			recursionDepth : 4,
-			numPoints : 4,
-			lineThickness : 1
+			numPoints      : 4,
+			lineThickness  : 1,
+			colour         : true,
+			blend          : 5      // 0..9  ->  decay 0..0.9
 		};
+
+		// ---- render budgets ------------------------------------------------
+		// Leaf count = (numPoints-1)^depth.  Anything above these is rendered
+		// at a reduced depth rather than failing outright.
+		var MAX_LEAVES     = 400000;   // full-quality render
+		var PREVIEW_LEAVES = 20000;    // while dragging / zooming
+		var FLUSH_POINTS   = 400000;   // coords buffered before each stroke pass
+
+		var interacting  = false;
+		var interactTimer = null;
+
+		var buckets = new Map();       // colour key -> { css, coords[] }
+		var pendingPoints = 0;
+
+		// ---------------------------------------------------------------------
 
 		var pointClass = function(x, y){
 			this.x = x == undefined ? 0 : x;
@@ -213,61 +243,245 @@
 			}
 		}
 
+		// ---- top level render ----------------------------------------------
+
 		function render(){
-			context.fillStyle = "#fff";
-			context.fillRect(0, 0, canvas.width, canvas.height);
-			context.beginPath();
-			drawFractal(JSON.parse(JSON.stringify(points)), settings.recursionDepth);
-			context.lineCap = "round";
-			context.lineWidth = settings.lineThickness;
-			context.stroke();
-			if(!hideHandles){
-				drawHandles();
-			}
-		}
+			var branch = Math.max(1, settings.numPoints - 1);
+			var budget = interacting ? PREVIEW_LEAVES : MAX_LEAVES;
+			var depth  = settings.recursionDepth;
 
-		function drawFractal(vertices, depth){
-			if(depth == 0){
-				context.moveTo(vertices[0].x, vertices[0].y);
-				for(let n = 1; n < settings.numPoints; n++){
-					context.lineTo(vertices[n].x, vertices[n].y);
-				}
+			// graceful degradation: shrink depth until the leaf count fits
+			while(depth > 1 && Math.pow(branch, depth) > budget) depth--;
+
+			var ok = paint(depth);
+
+			// belt and braces: if a render still blew up, back off further
+			while(!ok && depth > 1){
+				depth--;
+				ok = paint(depth);
+			}
+
+			if(ok){
+				setStatus(depth < settings.recursionDepth
+					? 'depth ' + settings.recursionDepth + ' \u2192 ' + depth
+					: '');
 			} else {
-				for(let n = 0; n < vertices.length - 1; n++){
-					let aPrime = vertices[n];
-					let bPrime = vertices[n + 1];
+				context.fillStyle = '#fff';
+				context.fillRect(0, 0, canvas.width, canvas.height);
+				setStatus('render failed');
+			}
 
-					let a = points[0];
-					let b = points[settings.numPoints - 1];
+			if(!hideHandles) drawHandles();
+		}
 
-					let aC  = { re: a.x, im: a.y };
-					let bC  = { re: b.x, im: b.y };
-					let aC_ = { re: aPrime.x, im: aPrime.y };
-					let bC_ = { re: bPrime.x, im: bPrime.y };
+		function setStatus(msg){
+			var el = document.getElementById('status');
+			if(el) el.textContent = msg;
+		}
 
-					let num = complexSub(bC_, aC_);
-					let den = complexSub(bC,  aC);
-					let alpha = complexDiv(num, den);
-					let beta = complexSub(aC_, complexMul(alpha, aC));
-
-					let transformed = points.map(p => {
-						let z = { re: p.x, im: p.y };
-						let zOut = complexAdd(complexMul(alpha, z), beta);
-						return { x: zOut.re, y: zOut.im };
-					});
-
-					drawFractal(transformed, depth - 1);
-				}
+		function paint(depth){
+			try {
+				paintUnsafe(depth);
+				return true;
+			} catch(err){
+				console.error('Fractal render failed at depth ' + depth, err);
+				return false;
 			}
 		}
 
-		function complexAdd(a, b){ return { re: a.re + b.re, im: a.im + b.im }; }
-		function complexSub(a, b){ return { re: a.re - b.re, im: a.im - b.im }; }
-		function complexMul(a, b){ return { re: a.re*b.re - a.im*b.im, im: a.re*b.im + a.im*b.re }; }
-		function complexDiv(a, b){
-			let denom = b.re*b.re + b.im*b.im;
-			return { re: (a.re*b.re + a.im*b.im) / denom, im: (a.im*b.re - a.re*b.im) / denom };
+		// ---- the actual (non-recursive) renderer ---------------------------
+
+		function paintUnsafe(depth){
+			context.fillStyle = '#fff';
+			context.fillRect(0, 0, canvas.width, canvas.height);
+
+			context.lineCap   = 'round';
+			context.lineJoin  = 'round';
+			context.lineWidth = settings.lineThickness;
+
+			var n      = settings.numPoints;
+			var branch = n - 1;
+			var last   = n - 1;
+
+			// base vertices, copied once
+			var bx = new Float64Array(n);
+			var by = new Float64Array(n);
+			for(let i = 0; i < n; i++){ bx[i] = points[i].x; by[i] = points[i].y; }
+
+			// degenerate control pair -> nothing sensible to draw
+			var dx0 = bx[last] - bx[0];
+			var dy0 = by[last] - by[0];
+			var den = dx0 * dx0 + dy0 * dy0;
+			if(den === 0) return;
+
+			// S_i : points[0] -> points[i], points[last] -> points[i+1]
+			// (a similarity, stored as alpha/beta complex pair)
+			var sA = new Array(branch);
+			var sB = new Array(branch);
+			for(let i = 0; i < branch; i++){
+				var numRe = bx[i + 1] - bx[i];
+				var numIm = by[i + 1] - by[i];
+
+				var alphaRe = (numRe * dx0 + numIm * dy0) / den;
+				var alphaIm = (numIm * dx0 - numRe * dy0) / den;
+
+				var betaRe = bx[i] - (alphaRe * bx[0] - alphaIm * by[0]);
+				var betaIm = by[i] - (alphaRe * by[0] + alphaIm * bx[0]);
+
+				sA[i] = { re: alphaRe, im: alphaIm };
+				sB[i] = { re: betaRe, im: betaIm };
+			}
+
+			// colour setup
+			var palette = settings.colour ? makePalette(branch) : null;
+			var decay   = settings.blend / 10;
+			var weights = new Float64Array(depth + 1);
+			for(let k = 0; k <= depth; k++) weights[k] = Math.pow(decay, k);
+
+			buckets = new Map();
+			pendingPoints = 0;
+
+			// DFS with an explicit stack.  Frame = { alpha, beta, depth,
+			// accumulated r/g/b and weight }.  Never more than
+			// (branch-1)*depth + 1 entries deep.
+			var stack = [{ a: { re: 1, im: 0 }, b: { re: 0, im: 0 },
+			               d: 0, r: 0, g: 0, bl: 0, w: 0 }];
+
+			while(stack.length){
+				var node = stack.pop();
+
+				if(node.d === depth){
+					var inv = node.w > 0 ? 1 / node.w : 0;
+					emitLeaf(node.a, node.b,
+					         node.r * inv, node.g * inv, node.bl * inv,
+					         bx, by, n);
+					continue;
+				}
+
+				var w = weights[node.d];
+
+				for(let i = branch - 1; i >= 0; i--){
+					var sa = sA[i], sb = sB[i];
+					var A  = node.a;
+
+					// child transform = parent ∘ S_i
+					var childA = { re: A.re * sa.re - A.im * sa.im,
+					               im: A.re * sa.im + A.im * sa.re };
+					var tRe = A.re * sb.re - A.im * sb.im;
+					var tIm = A.re * sb.im + A.im * sb.re;
+					var childB = { re: tRe + node.b.re,
+					               im: tIm + node.b.im };
+
+					var r = node.r, g = node.g, bl = node.bl, ww = node.w;
+					if(palette){
+						var col = palette[i];
+						r  += w * col.r;
+						g  += w * col.g;
+						bl += w * col.b;
+						ww += w;
+					}
+
+					stack.push({ a: childA, b: childB, d: node.d + 1,
+					             r: r, g: g, bl: bl, w: ww });
+				}
+			}
+
+			flushBuckets();
 		}
+
+		// ---- leaf emission & batching --------------------------------------
+
+		function emitLeaf(A, B, r, g, b, bx, by, n){
+			var ri = 0, gi = 0, bi = 0, key;
+
+			if(settings.colour){
+				ri = Math.round(r  / 17); if(ri < 0) ri = 0; else if(ri > 15) ri = 15;
+				gi = Math.round(g  / 17); if(gi < 0) gi = 0; else if(gi > 15) gi = 15;
+				bi = Math.round(b  / 17); if(bi < 0) bi = 0; else if(bi > 15) bi = 15;
+				key = ri | (gi << 4) | (bi << 8);
+			} else {
+				key = -1;
+			}
+
+			var bucket = buckets.get(key);
+			if(!bucket){
+				bucket = {
+					css: settings.colour
+						? 'rgb(' + (ri * 17) + ',' + (gi * 17) + ',' + (bi * 17) + ')'
+						: '#111',
+					coords: []
+				};
+				buckets.set(key, bucket);
+			}
+
+			var c   = bucket.coords;
+			var ar  = A.re, ai = A.im, br = B.re, bim = B.im;
+
+			for(let k = 0; k < n; k++){
+				var x = bx[k], y = by[k];
+				var px = ar * x - ai * y + br;
+				var py = ar * y + ai * x + bim;
+				if(k === 0) c.push(NaN, px, py);   // NaN = moveTo marker
+				else        c.push(px, py);
+			}
+
+			pendingPoints += n;
+			if(pendingPoints >= FLUSH_POINTS) flushBuckets();
+		}
+
+		function flushBuckets(){
+			buckets.forEach(function(bucket){
+				var c = bucket.coords;
+				if(c.length < 3) return;
+
+				context.beginPath();
+				for(let i = 0; i < c.length; ){
+					if(c[i] !== c[i]){          // NaN
+						context.moveTo(c[i + 1], c[i + 2]);
+						i += 3;
+					} else {
+						context.lineTo(c[i], c[i + 1]);
+						i += 2;
+					}
+				}
+				context.strokeStyle = bucket.css;
+				context.stroke();
+			});
+			buckets = new Map();
+			pendingPoints = 0;
+		}
+
+		// ---- colour helpers -------------------------------------------------
+
+		function makePalette(count){
+			var out = [];
+			for(let i = 0; i < count; i++){
+				var h = (360 * i / count + 20) % 360;
+				out.push(hslToRgb(h, 0.65, 0.52));
+			}
+			return out;
+		}
+
+		function hslToRgb(h, s, l){
+			h = (((h % 360) + 360) % 360) / 360;
+			var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+			var p = 2 * l - q;
+			function hue(t){
+				if(t < 0) t += 1;
+				if(t > 1) t -= 1;
+				if(t < 1/6) return p + (q - p) * 6 * t;
+				if(t < 1/2) return q;
+				if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+				return p;
+			}
+			return {
+				r: Math.round(hue(h + 1/3) * 255),
+				g: Math.round(hue(h)       * 255),
+				b: Math.round(hue(h - 1/3) * 255)
+			};
+		}
+
+		// ---- misc -----------------------------------------------------------
 
 		function drawHandles(){
 			for(let n = 0; n < settings.numPoints; n++){
@@ -345,6 +559,32 @@
 			thInput.onchange = () => applyThickness(thInput.value);
 			thInput.onkeydown = (e) => { if(e.key === 'Enter') applyThickness(thInput.value); };
 
+			// Colour toggle
+			var colourBtn = document.getElementById('toggle-colour');
+			colourBtn.onclick = function(){
+				settings.colour = !settings.colour;
+				colourBtn.classList.toggle('active', !settings.colour);
+				render();
+			};
+
+			// Blend stepper
+			var blInput = document.getElementById('input-blend');
+			var blDec   = document.getElementById('dec-blend');
+			var blInc   = document.getElementById('inc-blend');
+			blInput.value = settings.blend;
+
+			function applyBlend(val){
+				val = Math.max(0, Math.min(9, parseInt(val) || 0));
+				settings.blend = val;
+				blInput.value = val;
+				render();
+			}
+
+			blDec.onclick = () => applyBlend(settings.blend - 1);
+			blInc.onclick = () => applyBlend(settings.blend + 1);
+			blInput.onchange = () => applyBlend(blInput.value);
+			blInput.onkeydown = (e) => { if(e.key === 'Enter') applyBlend(blInput.value); };
+
 			// button toggling the display of handles
 			var toggleBtn = document.getElementById('toggle-handles');
 			toggleBtn.onclick = function(){
@@ -352,6 +592,24 @@
 				toggleBtn.classList.toggle('active', hideHandles);
 				render();
 			}
+		}
+
+		// ---- interaction -----------------------------------------------------
+
+		function beginInteract(){
+			if(!interacting){
+				interacting = true;
+			}
+			if(interactTimer) clearTimeout(interactTimer);
+			interactTimer = null;
+		}
+
+		function endInteract(){
+			if(interactTimer) clearTimeout(interactTimer);
+			interactTimer = setTimeout(function(){
+				interacting = false;
+				render();
+			}, 140);
 		}
 
 		function initIO(){
@@ -369,9 +627,11 @@
 				if(n >= settings.numPoints){
 					dragging = "all";
 				}
+				if(dragging !== -1) beginInteract();
 			}
 
 			canvas.onmouseup = function(e){
+				if(dragging !== -1) endInteract();
 				dragging = -1;
 			}
 
@@ -395,6 +655,7 @@
 			canvas.onwheel = function(e){
 				e.preventDefault();
 				e.stopPropagation();
+				beginInteract();
 				var multiple = e.deltaY > 0 ? 0.9 : 1.1;
 				var clickX = e.offsetX;
 				var clickY = e.offsetY;
@@ -405,6 +666,7 @@
 					points[n].y = clickY + dy;
 				}
 				render();
+				endInteract();
 			};
 		}
 
@@ -440,7 +702,19 @@
 			<button id="inc-thickness">+</button>
 		</div>
 
+		<div class="divider"></div>
+
+		<button id="toggle-colour" class="toggle-btn">Colour</button>
+		<span class="toolbar-label">Blend</span>
+		<div class="stepper">
+			<button id="dec-blend">-</button>
+			<input id="input-blend" type="number" min="0" max="9" />
+			<button id="inc-blend">+</button>
+		</div>
+
 		<button id="toggle-handles" class="toggle-btn">Show Handles</button>
+
+		<span id="status" class="toolbar-status"></span>
 	</div>
 
 	<div id="canvas-container"></div>
