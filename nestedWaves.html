@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nested oscillating curves</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #0b0d12;
+  }
+  #app { display: flex; height: 100%; }
+
+  /* ---- sidebar ---- */
+  #ui {
+    flex: 0 0 280px;
+    width: 280px;
+    box-sizing: border-box;
+    padding: 16px 16px 20px;
+    background: #23262b;
+    border-right: 1px solid #35393f;
+    color: #d7dbe0;
+    font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+    overflow-y: auto;
+    user-select: none;
+  }
+  #ui::-webkit-scrollbar { width: 10px; }
+  #ui::-webkit-scrollbar-thumb { background: #3a3f46; border-radius: 5px; }
+  #ui::-webkit-scrollbar-track { background: transparent; }
+
+  #ui h1 {
+    margin: 0 0 14px;
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: #98a1ac;
+  }
+  #ui h3 {
+    margin: 0 0 7px;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: #7d858f;
+  }
+  #ui hr {
+    border: 0; border-top: 1px solid #35393f;
+    margin: 14px 0;
+  }
+
+  #ui label {
+    display: grid;
+    grid-template-columns: 92px 1fr 44px;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+  }
+  #ui label.toggle { grid-template-columns: 1fr auto; }
+  #ui label.select { grid-template-columns: 72px 1fr; }
+
+  #ui .val {
+    text-align: right;
+    color: #a8b4c4;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #ui input[type="range"] { width: 100%; accent-color: #8fa0b5; }
+  #ui input[type="checkbox"] { accent-color: #8fa0b5; }
+
+  #ui select {
+    width: 100%;
+    padding: 4px 6px;
+    background: #2b2f35;
+    color: #d7dbe0;
+    border: 1px solid #3d424a;
+    border-radius: 6px;
+    font: inherit;
+    cursor: pointer;
+  }
+  #ui select:hover { border-color: #4c535c; }
+
+  #ui button {
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px 8px;
+    background: #2d3138;
+    color: #cdd3da;
+    border: 1px solid #41464e;
+    border-radius: 6px;
+    font: inherit;
+    cursor: pointer;
+  }
+  #ui button:hover { background: #383d45; color: #eef1f4; }
+  #ui button:active { background: #23262b; }
+  #ui button.active {
+    background: #3a4d63;
+    border-color: #55708f;
+    color: #eef6ff;
+  }
+
+  #hint {
+    margin-top: 16px;
+    color: #6c747e;
+    font-size: 11px;
+    line-height: 1.7;
+  }
+  #hint b { color: #8b939d; font-weight: 600; }
+
+  /* ---- canvas ---- */
+  #stage {
+    flex: 1 1 auto;
+    position: relative;
+    min-width: 0;
+  }
+  #c {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: none;
+  }
+  #c.dragging { cursor: grabbing; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="ui"></aside>
+  <main id="stage"><canvas id="c"></canvas></main>
+</div>
+<script>
+(function () {
+  'use strict';
+
+  const params = {
+    levels:          5,
+    baseRadius:      220,
+    gap0:            38,
+    gapScale:        0.62,
+    ampRatio:        0.85,
+    freq0:           2,
+    freqMul:         2,
+    phase:           0,
+    speed:           0.2,          // cycles per second
+    outward:         false,
+    filled:          true,
+    strokes:         true,
+    gradient:        'spectral',
+    samplesPerCycle: 128,
+    maxSamples:      300000
+  };
+
+  const canvas = document.getElementById('c');
+  const stage  = document.getElementById('stage');
+  const ctx    = canvas.getContext('2d');
+  const ui     = document.getElementById('ui');
+
+  // ------------------------------------------------------------- palettes
+
+  const hsl = (h, s, l) =>
+    `hsl(${((h % 360) + 360) % 360} ${s}% ${Math.max(0, Math.min(100, l))}%)`;
+
+  const GRADIENTS = {
+    spectral: {
+      label: 'spectral',
+      color(u, i) {
+        const h = 190 + u * 140;
+        return { fill: hsl(h, 62, i % 2 ? 52 : 40), stroke: hsl(h, 90, 68) };
+      }
+    },
+    greyscale: {
+      label: 'greyscale',
+      color(u, i) {
+        const l = 24 + u * 44;
+        return { fill: hsl(0, 0, i % 2 ? l + 9 : l - 9), stroke: hsl(0, 0, 88) };
+      }
+    },
+    fire: {
+      label: 'fire',
+      color(u, i) {
+        const h = 8 + u * 48;
+        const l = 26 + u * 34;
+        return { fill: hsl(h, 92, i % 2 ? l + 8 : l - 6), stroke: hsl(h, 100, 66) };
+      }
+    },
+    ocean: {
+      label: 'ocean',
+      color(u, i) {
+        const h = 188 + u * 92;
+        const l = 26 + u * 32;
+        return { fill: hsl(h, 70, i % 2 ? l + 8 : l - 6), stroke: hsl(h, 92, 70) };
+      }
+    },
+    sunset: {
+      label: 'sunset',
+      color(u, i) {
+        const h = 300 + u * 130;
+        const l = 30 + u * 30;
+        return { fill: hsl(h, 78, i % 2 ? l + 8 : l - 6), stroke: hsl(h, 95, 70) };
+      }
+    },
+    viridis: {
+      label: 'viridis',
+      color(u, i) {
+        const h = 275 - u * 215;
+        const l = 28 + u * 40;
+        return { fill: hsl(h, 65, i % 2 ? l + 8 : l - 6), stroke: hsl(h, 85, 68) };
+      }
+    },
+    phosphor: {
+      label: 'phosphor',
+      color(u, i) {
+        const h = 118 + u * 22;
+        const l = 30 + u * 40;
+        return { fill: hsl(h, 85, i % 2 ? l + 8 : l - 6), stroke: hsl(h, 100, 72) };
+      }
+    }
+  };
+
+  // ------------------------------------------------------------- view state
+
+  // `view` is the live camera. `homeView` is the frozen default camera that
+  // we only recompute on explicit reset (or first draw). Parameter changes
+  // and animation do NOT touch either of them.
+  const view      = { x: 0, y: 0, scale: 1 };
+  let   homeView  = null;
+  let   viewDirty = false;
+
+  // animation state
+  let animating   = false;
+  let lastTs      = null;
+  let rafPending  = false;
+  let phaseCtl    = null;
+
+  // -------------------------------------------------------------- scheduler
+
+  function requestDraw() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(frame);
+  }
+
+  function frame(ts) {
+    rafPending = false;
+
+    if (animating) {
+      if (lastTs === null) lastTs = ts;
+      let dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+      if (!(dt > 0)) dt = 0;
+      if (dt > 0.1) dt = 0.1;
+      params.phase = (params.phase + params.speed * 2 * Math.PI * dt) % (2 * Math.PI);
+      if (phaseCtl) phaseCtl.show();
+      needsRebuild = true;
+    }
+
+    draw();
+
+    if (animating) requestDraw();
+  }
+
+  // ---------------------------------------------------------------- geometry
+
+  function inwardNormals(pts) {
+    const n = pts.length;
+    const out = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const a = pts[(i - 1 + n) % n];
+      const b = pts[(i + 1) % n];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const L = Math.hypot(dx, dy) || 1;
+      dx /= L; dy /= L;
+      out[i] = { x: -dy, y: dx };
+    }
+    return out;
+  }
+
+  function buildCurves() {
+    const p = params;
+    const levels = Math.max(1, Math.round(p.levels));
+
+    let freqSum = 0, f = p.freq0;
+    for (let i = 0; i < levels - 1; i++) { freqSum += f; f *= p.freqMul; }
+    const N = Math.min(
+      p.maxSamples,
+      Math.max(8192, Math.ceil(p.samplesPerCycle * Math.max(1, freqSum)))
+    );
+
+    const curves = [];
+
+    const base = new Array(N);
+    for (let i = 0; i < N; i++) {
+      const t = (2 * Math.PI * i) / N;
+      base[i] = { x: p.baseRadius * Math.cos(t), y: p.baseRadius * Math.sin(t) };
+    }
+    curves.push(base);
+
+    let parent = base;
+    let gap  = p.gap0;
+    let freq = p.freq0;
+    const dir = p.outward ? -1 : 1;
+
+    for (let lev = 1; lev < levels; lev++) {
+      const nrm = inwardNormals(parent);
+      const child = new Array(N);
+      for (let i = 0; i < N; i++) {
+        const t = (2 * Math.PI * i) / N;
+        const d = dir * gap * (1 + p.ampRatio * Math.sin(freq * t + p.phase));
+        child[i] = {
+          x: parent[i].x + nrm[i].x * d,
+          y: parent[i].y + nrm[i].y * d
+        };
+      }
+      curves.push(child);
+      parent = child;
+      gap  *= p.gapScale;
+      freq *= p.freqMul;
+    }
+
+    const paths = [];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const pts of curves) {
+      const path = new Path2D();
+      path.moveTo(pts[0].x, pts[0].y);
+      for (let j = 1; j < pts.length; j++) path.lineTo(pts[j].x, pts[j].y);
+      path.closePath();
+      paths.push(path);
+      for (let j = 0; j < pts.length; j++) {
+        const q = pts[j];
+        if (q.x < minX) minX = q.x;
+        if (q.x > maxX) maxX = q.x;
+        if (q.y < minY) minY = q.y;
+        if (q.y > maxY) maxY = q.y;
+      }
+    }
+    return { paths, count: curves.length, bbox: { minX, minY, maxX, maxY } };
+  }
+
+  let cache = null;
+  let needsRebuild = true;
+
+  // ---------------------------------------------------------------- drawing
+
+  // Fit a given bbox into the current canvas. Only called from resetView()
+  // and the first draw; never from the per-frame path.
+  function computeFit(bbox, w, h) {
+    const cx = (bbox.minX + bbox.maxX) / 2;
+    const cy = (bbox.minY + bbox.maxY) / 2;
+    const spanX = Math.max(1e-6, bbox.maxX - bbox.minX);
+    const spanY = Math.max(1e-6, bbox.maxY - bbox.minY);
+    const pad = 32;
+    const scale = Math.min((w - pad * 2) / spanX, (h - pad * 2) / spanY);
+    return { x: cx, y: cy, scale };
+  }
+
+  function draw() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w === 0 || h === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+    if (canvas.width !== pw || canvas.height !== ph) {
+      canvas.width = pw; canvas.height = ph;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#0b0d12';
+    ctx.fillRect(0, 0, w, h);
+
+    if (needsRebuild || !cache) {
+      cache = buildCurves();
+      needsRebuild = false;
+    }
+
+    // Compute the home camera once, on the very first draw. After this it
+    // only changes on explicit reset (or a resize while the user has not
+    // touched the camera), so parameter tweaks and animation frames leave
+    // the scale alone.
+    if (!homeView) homeView = computeFit(cache.bbox, w, h);
+
+    if (!viewDirty) {
+      view.x = homeView.x;
+      view.y = homeView.y;
+      view.scale = homeView.scale;
+    }
+
+    const n = cache.count;
+    const pal = (GRADIENTS[params.gradient] || GRADIENTS.spectral).color;
+
+    const order = new Array(n);
+    for (let i = 0; i < n; i++) order[i] = params.outward ? (n - 1 - i) : i;
+
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(view.scale, view.scale);
+    ctx.translate(-view.x, -view.y);
+    ctx.lineJoin = 'round';
+    ctx.lineCap  = 'round';
+
+    const lw = 1.1 / view.scale;
+
+    for (const i of order) {
+      const u = n > 1 ? i / (n - 1) : 0;
+      const col = pal(u, i);
+      const path = cache.paths[i];
+      if (params.filled) {
+        ctx.fillStyle = col.fill;
+        ctx.fill(path);
+      }
+      if (params.strokes) {
+        ctx.strokeStyle = col.stroke;
+        ctx.lineWidth = lw;
+        ctx.stroke(path);
+      }
+    }
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------- interaction
+
+  let dragging = false, lastX = 0, lastY = 0;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+    canvas.classList.add('dragging');
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    if (dx === 0 && dy === 0) return;
+    view.x -= dx / view.scale;
+    view.y -= dy / view.scale;
+    viewDirty = true;
+    requestDraw();
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    canvas.classList.remove('dragging');
+    try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+
+    const wx = view.x + (mx - w / 2) / view.scale;
+    const wy = view.y + (my - h / 2) / view.scale;
+
+    const dy = e.deltaMode === 1 ? e.deltaY * 16
+             : e.deltaMode === 2 ? e.deltaY * 100
+             : e.deltaY;
+    const factor = Math.exp(-dy * 0.0015);
+
+    const minS = homeView.scale * 0.05;
+    const maxS = homeView.scale * 2000;
+    const ns = Math.min(maxS, Math.max(minS, view.scale * factor));
+
+    view.x = wx - (mx - w / 2) / ns;
+    view.y = wy - (my - h / 2) / ns;
+    view.scale = ns;
+    viewDirty = true;
+    requestDraw();
+  }, { passive: false });
+
+  canvas.addEventListener('dblclick', resetView);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'r' || e.key === 'R') resetView();
+  });
+
+  // On resize: if the user has not moved the camera, re-fit to the current
+  // content at the new canvas size. If they have, leave their view alone.
+  function onResize() {
+    if (!viewDirty && cache) {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      if (w > 0 && h > 0) homeView = computeFit(cache.bbox, w, h);
+    }
+    requestDraw();
+  }
+  window.addEventListener('resize', onResize);
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(onResize).observe(stage);
+  }
+
+  // Explicit reset: re-fit to whatever the current parameters produce.
+  function resetView() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w > 0 && h > 0 && cache) {
+      homeView = computeFit(cache.bbox, w, h);
+    }
+    viewDirty = false;
+    requestDraw();
+  }
+
+  // ------------------------------------------------------------ animation API
+
+  function startAnimation() {
+    if (animating) return;
+    animating = true;
+    lastTs = null;
+    animBtn.textContent = 'stop animation';
+    animBtn.classList.add('active');
+    requestDraw();
+  }
+
+  function stopAnimation() {
+    if (!animating) return;
+    animating = false;
+    lastTs = null;
+    animBtn.textContent = 'animate phase';
+    animBtn.classList.remove('active');
+  }
+
+  function toggleAnimation() {
+    if (animating) stopAnimation(); else startAnimation();
+    requestDraw();
+  }
+
+  // ---------------------------------------------------------------- UI
+
+  function slider(key, label, min, max, step, fmt, onInput) {
+    const row = document.createElement('label');
+    const name = document.createElement('span'); name.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = String(min); input.max = String(max); input.step = String(step);
+    input.value = String(params[key]);
+    const val = document.createElement('span'); val.className = 'val';
+
+    const show = () => {
+      const v = params[key];
+      input.value = String(v);
+      val.textContent = fmt ? fmt(v) : String(v);
+    };
+    show();
+
+    input.addEventListener('input', () => {
+      params[key] = parseFloat(input.value);
+      show();
+      if (onInput) onInput(params[key]);
+      needsRebuild = true;
+      requestDraw();
+    });
+
+    row.append(name, input, val);
+    ui.appendChild(row);
+    return { input, show };
+  }
+
+  function toggle(key, label) {
+    const row = document.createElement('label');
+    row.className = 'toggle';
+    const name = document.createElement('span'); name.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = !!params[key];
+    input.addEventListener('change', () => {
+      params[key] = input.checked;
+      needsRebuild = true;
+      requestDraw();
+    });
+    row.append(name, input);
+    ui.appendChild(row);
+  }
+
+  function dropdown(key, label, options) {
+    const row = document.createElement('label');
+    row.className = 'select';
+    const name = document.createElement('span'); name.textContent = label;
+    const sel = document.createElement('select');
+    for (const [value, text] of options) {
+      const opt = document.createElement('option');
+      opt.value = value; opt.textContent = text;
+      sel.appendChild(opt);
+    }
+    sel.value = params[key];
+    sel.addEventListener('change', () => {
+      params[key] = sel.value;
+      requestDraw();
+    });
+    row.append(name, sel);
+    ui.appendChild(row);
+  }
+
+  function heading(text, level) {
+    const el = document.createElement(level || 'h3');
+    el.textContent = text;
+    ui.appendChild(el);
+  }
+
+  function rule() { ui.appendChild(document.createElement('hr')); }
+
+  heading('nested oscillating curves', 'h1');
+
+  heading('nesting');
+  slider('levels',   'levels',     1,   9,    1,    v => v.toFixed(0));
+  slider('gap0',     'gap₀',       4,   120,  1,    v => v.toFixed(0));
+  slider('gapScale', 'gap scale',  0.2, 1.0,  0.01, v => v.toFixed(2));
+  slider('ampRatio', 'amplitude',  0,   0.98, 0.01, v => v.toFixed(2));
+
+  rule();
+  heading('frequency');
+  slider('freq0',   'freq₀',  1, 8, 1,    v => v.toFixed(0));
+  slider('freqMul', 'freq ×', 1, 3, 0.05, v => v.toFixed(2));
+  phaseCtl = slider('phase', 'phase', 0, Math.PI * 2, 0.01,
+                    v => v.toFixed(2),
+                    () => stopAnimation());
+
+  rule();
+  heading('animation');
+  slider('speed', 'speed (Hz)', 0.02, 2.0, 0.01, v => v.toFixed(2));
+
+  const animBtn = document.createElement('button');
+  animBtn.textContent = 'animate phase';
+  animBtn.addEventListener('click', toggleAnimation);
+  ui.appendChild(animBtn);
+
+  rule();
+  heading('appearance');
+  dropdown('gradient', 'palette', Object.entries(GRADIENTS).map(([k, g]) => [k, g.label]));
+  toggle('filled',  'fill bands');
+  toggle('strokes', 'outline');
+  toggle('outward', 'outward');
+
+  rule();
+  heading('view');
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'reset view';
+  resetBtn.addEventListener('click', resetView);
+  ui.appendChild(resetBtn);
+
+  const hint = document.createElement('div');
+  hint.id = 'hint';
+  hint.innerHTML =
+    '<b>wheel</b> zoom at cursor<br>' +
+    '<b>drag</b> pan<br>' +
+    '<b>double-click</b> or <b>R</b> reset view';
+  ui.appendChild(hint);
+
+  draw();
+})();
+</script>
+</body>
+</html>
